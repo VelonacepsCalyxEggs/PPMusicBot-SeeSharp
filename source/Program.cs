@@ -1,0 +1,45 @@
+using PPMusicBot.Services;
+using PPMusicBot;
+using Discord.Interactions;
+using Discord.WebSocket;
+using Discord;
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddSingleton<DiscordSocketClient>(provider =>
+{
+    var config = new DiscordSocketConfig()
+    {
+        MessageCacheSize = 32,
+        GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent,
+        LogLevel = LogSeverity.Info
+    };
+    return new DiscordSocketClient(config);
+});
+
+builder.Services.AddSingleton<InteractionService>(provider =>
+{
+    var client = provider.GetRequiredService<DiscordSocketClient>();
+    var interactionConfig = new InteractionServiceConfig()
+    {
+        LogLevel = LogSeverity.Info,
+        UseCompiledLambda = true,
+        DefaultRunMode = RunMode.Async
+    };
+    return new InteractionService(client, interactionConfig);
+});
+
+//// Register all command modules
+//var assembly = Assembly.GetExecutingAssembly();
+//var moduleTypes = assembly.GetTypes()
+//    .Where(t => t.IsSubclassOf(typeof(InteractionModuleBase)) && !t.IsAbstract);
+
+//foreach (var moduleType in moduleTypes)
+//{
+//    builder.Services.AddSingleton(moduleType);
+//}
+
+builder.Services.AddSingleton<BotService>();
+builder.Services.AddHostedService<BotWorker>();
+
+var host = builder.Build();
+host.Run();
