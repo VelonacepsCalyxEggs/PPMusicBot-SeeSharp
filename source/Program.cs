@@ -3,6 +3,8 @@ using PPMusicBot;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Discord;
+using Lavalink4NET.Extensions;
+using PPMusicBot.Services.Lavalink;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddSingleton<DiscordSocketClient>(provider =>
@@ -38,6 +40,8 @@ builder.Services.AddSingleton<InteractionService>(provider =>
 //    builder.Services.AddSingleton(moduleType);
 //}
 
+builder.Services.AddLavalink();
+builder.Services.AddSingleton<LavalinkKenobiBackendTrackSourceService>();
 builder.Services.AddSingleton<BotService>();
 builder.Services.AddHostedService<BotWorker>();
 

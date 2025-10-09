@@ -14,6 +14,11 @@
     <PackageReference Include="Discord.Net.Rest" Version="3.18.0" />
     <PackageReference Include="Discord.Net.Webhook" Version="3.18.0" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.18.0" />
+    <PackageReference Include="Lavalink4NET" Version="4.0.27" />
+    <PackageReference Include="Lavalink4NET.Abstractions" Version="4.0.27" />
+    <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.27" />
+    <PackageReference Include="Lavalink4NET.Protocol" Version="4.0.27" />
+    <PackageReference Include="Lavalink4NET.Rest" Version="4.0.27" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
   </ItemGroup>
 </Project>

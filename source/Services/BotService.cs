@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Discord.Rest;
 using Discord.WebSocket;
+using Lavalink4NET;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -14,6 +16,7 @@ namespace PPMusicBot.Services
         private readonly ILogger<BotService> _logger;
         private readonly DiscordSocketClient _botClient;
         private readonly InteractionService _interactionService;
+        private readonly IAudioService _audioService;
         private readonly IServiceProvider _serviceProvider;
 
         public BotService(
@@ -21,13 +24,15 @@ namespace PPMusicBot.Services
             IConfiguration configuration,
             IServiceProvider serviceProvider,
             DiscordSocketClient botClient,
-            InteractionService interactionService)
+            InteractionService interactionService,
+            IAudioService audioService)
         {
             _configuration = configuration;
             _logger = logger;
             _serviceProvider = serviceProvider;
             _botClient = botClient;
             _interactionService = interactionService;
+            _audioService = audioService;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -48,6 +53,7 @@ namespace PPMusicBot.Services
             {
                 _logger.LogInformation("Initiating Bot Service graceful shutdown...");
             }
+            await _audioService.StopAsync();
             await _botClient.StopAsync();
         }
 
@@ -61,7 +67,9 @@ namespace PPMusicBot.Services
 
         private async Task OnReady()
         {
-            _logger.LogInformation("Bot is ready! Registering commands...");
+            _logger.LogInformation("Bot is ready!");
+
+            await _audioService.StartAsync();
 
             try
             {
@@ -78,46 +86,17 @@ namespace PPMusicBot.Services
 
         private async Task OnInteractionCreated(SocketInteraction interaction)
         {
-            try
-            {
-                _logger.LogInformation($"Interaction received: {interaction.Type} from {interaction.User.Username}");
+            _logger.LogInformation($"Interaction received: {interaction.Type} from {interaction.User.Username}");
 
-                var context = new SocketInteractionContext(_botClient, interaction);
-                var result = await _interactionService.ExecuteCommandAsync(context, _serviceProvider);
-
-                if (!result.IsSuccess)
-                {
-                    _logger.LogError($"Command failed: {result.ErrorReason}");
-
-                    if (!interaction.HasResponded)
-                    {
-                        await interaction.RespondAsync($"Error: {result.ErrorReason}", ephemeral: true);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to handle interaction");
-
-                if (!interaction.HasResponded)
-                {
-                    try
-                    {
-                        await interaction.RespondAsync("An error occurred.", ephemeral: true);
-                    }
-                    catch (Exception responseEx)
-                    {
-                        _logger.LogError(responseEx, "Also failed to send error response");
-                    }
-                }
-            }
+            var context = new SocketInteractionContext(_botClient, interaction);
+            await _interactionService.ExecuteCommandAsync(context, _serviceProvider);
         }
 
         private async Task OnInteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result)
         {
             if (!result.IsSuccess)
             {
-                _logger.LogError($"Interaction executed but failed: {result.ErrorReason}");
+                _logger.LogError($"Interaction executed but failed: {result.ErrorReason} {result.Error}");
 
                 switch (result.Error)
                 {
@@ -128,10 +107,12 @@ namespace PPMusicBot.Services
                     case InteractionCommandError.Exception:
                         if (!context.Interaction.HasResponded)
                             await context.Interaction.RespondAsync($"An exception occurred: {result.ErrorReason}", ephemeral: true);
+                        else await context.Interaction.FollowupAsync($"An error occurred: {result.ErrorReason}", ephemeral: true);
                         break;
                     default:
                         if (!context.Interaction.HasResponded)
                             await context.Interaction.RespondAsync($"An error occurred: {result.ErrorReason}", ephemeral: true);
+                        else await context.Interaction.FollowupAsync($"An error occurred: {result.ErrorReason}", ephemeral: true);
                         break;
                 }
             }
@@ -145,7 +126,7 @@ namespace PPMusicBot.Services
         {
             try
             {
-                await _interactionService.RegisterCommandsGloballyAsync(true);
+                //await _interactionService.RegisterCommandsGloballyAsync(true);
                 foreach (var guild in _botClient.Guilds)
                 {
                      _logger.LogInformation($"Registering commands for guild: {guild.Name}");
