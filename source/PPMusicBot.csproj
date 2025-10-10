@@ -21,4 +21,8 @@
     <PackageReference Include="Lavalink4NET.Rest" Version="4.0.27" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Services\Lavalink\" />
+  </ItemGroup>
 </Project>

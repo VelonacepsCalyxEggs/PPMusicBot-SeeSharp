@@ -1,13 +1,20 @@
 ﻿namespace Lavalink4NET.Discord_NET.ExampleBot;
 
 using System;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Discord.Interactions;
+using Lavalink4NET.Clients;
 using Lavalink4NET.DiscordNet;
+using Lavalink4NET.Extensions;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Rest.Entities.Tracks;
-using PPMusicBot.Services.Lavalink;
+using PPMusicBot.Classes;
+using PPMusicBot.Models;
+using PPMusicBot.Services;
+using static PPMusicBot.Models.KenobiAPIModels;
 
 /// <summary>
 ///     Presents some of the main features of the Lavalink4NET-Library.
@@ -16,8 +23,9 @@ using PPMusicBot.Services.Lavalink;
 public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly IAudioService _audioService;
-    private readonly LavalinkKenobiBackendTrackSourceService _KenobiAPISource;
     private readonly ILogger<MusicSlashCommandModule> _logger;
+
+    private readonly KenobiAPISearchEngineService _kenobiAPISearchEngineService;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="MusicModule"/> class.
@@ -26,13 +34,14 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     /// <exception cref="ArgumentNullException">
     ///     thrown if the specified <paramref name="audioService"/> is <see langword="null"/>.
     /// </exception>
-    public MusicSlashCommandModule(IAudioService audioService, LavalinkKenobiBackendTrackSourceService kenobiAPISource, ILogger<MusicSlashCommandModule> logger)
+    public MusicSlashCommandModule(IAudioService audioService, ILogger<MusicSlashCommandModule> logger, KenobiAPISearchEngineService kenobiAPISearchEngineService)
     {
         ArgumentNullException.ThrowIfNull(audioService);
 
         _audioService = audioService;
-        _KenobiAPISource = kenobiAPISource;
         _logger = logger;
+
+        _kenobiAPISearchEngineService = kenobiAPISearchEngineService;
     }
 
     /// <summary>
@@ -64,33 +73,36 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         await DeferAsync().ConfigureAwait(false);
 
         var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
- 
+
         if (player is null)
         {
             return;
         }
 
-        //var track = await _audioService.Tracks
-        //    .LoadTrackAsync(query, TrackSearchMode.YouTube)
-        //    .ConfigureAwait(false);
+        var result = await _kenobiAPISearchEngineService.Search(query).ConfigureAwait(false);
 
-        var track = await _KenobiAPISource.LoadTrackAsync(query).ConfigureAwait(false);
-
-        if (track is null)
+        if (result is null)
         {
-            await FollowupAsync("No results.").ConfigureAwait(false);
+            await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
             return;
         }
 
-        var position = await player.PlayAsync(track).ConfigureAwait(false);
+        var track = await _audioService.Tracks.LoadTrackAsync(result.TrackUrl, TrackSearchMode.None);
+        if (track is null)
+        {
+            await FollowupAsync("Lavalink could not load the track.");
+            return;
+        }
+        
+        var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Track)).ConfigureAwait(false);
 
         if (position is 0)
         {
-            await FollowupAsync($"Playing: {track.Uri}").ConfigureAwait(false);
+            await FollowupAsync($"Playing: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
         }
         else
         {
-            await FollowupAsync($"Added to queue: {track.Uri}").ConfigureAwait(false);
+            await FollowupAsync($"Added to queue: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
         }
     }
 
@@ -114,7 +126,8 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             return;
         }
 
-        await RespondAsync($"Position: {player.Position?.Position} / {player.CurrentTrack.Duration}.").ConfigureAwait(false);
+        var customData = PlayerExtensions.GetCustomData(player);
+        await RespondAsync($"Position: {player.Position?.Position} / {customData?.title ?? player.CurrentTrack?.Title}.").ConfigureAwait(false);
     }
 
     /// <summary>
