@@ -86,23 +86,51 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
             return;
         }
-
-        var track = await _audioService.Tracks.LoadTrackAsync(result.TrackUrl, TrackSearchMode.None);
-        if (track is null)
+        // Next step would probably be a proper embed creator and subcommands. I love how it works so far... also I need to not
+        // forget about player event listeners...
+        if (result.Tracks.Count > 1)
         {
-            await FollowupAsync("Lavalink could not load the track.");
-            return;
-        }
-        
-        var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Track)).ConfigureAwait(false);
-
-        if (position is 0)
-        {
-            await FollowupAsync($"Playing: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+            var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString, TrackSearchMode.None);
+            if (firstToPlay is null)
+            {
+                await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
+                return;
+            }
+            var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Tracks[0])).ConfigureAwait(false);
+            if (position is 0)
+            {
+                await FollowupAsync($"Playing: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Tracks.Count - 1} tracks with it because why the hell not.").ConfigureAwait(false);
+            }
+            else
+            {
+                await FollowupAsync($"Added to queue: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Tracks.Count - 1} tracks with it because why the hell not.").ConfigureAwait(false);
+            }
+            foreach (var resultTrack in result.Tracks[1..])
+            {
+                var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None);
+                if (track is null) { continue; }
+                await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
+            }
         }
         else
         {
-            await FollowupAsync($"Added to queue: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+            var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString, TrackSearchMode.None);
+            if (track is null)
+            {
+                await FollowupAsync("Lavalink could not load the track.");
+                return;
+            }
+
+            var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Tracks[0])).ConfigureAwait(false);
+
+            if (position is 0)
+            {
+                await FollowupAsync($"Playing: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+            }
+            else
+            {
+                await FollowupAsync($"Added to queue: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+            }
         }
     }
 
@@ -127,7 +155,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         }
 
         var customData = PlayerExtensions.GetCustomData(player);
-        await RespondAsync($"Position: {player.Position?.Position} / {customData?.title ?? player.CurrentTrack?.Title}.").ConfigureAwait(false);
+        await RespondAsync($"Position: {player.Position?.Position} / {player.CurrentTrack?.Duration} {customData?.title ?? player.CurrentTrack?.Title}.").ConfigureAwait(false);
     }
 
     /// <summary>

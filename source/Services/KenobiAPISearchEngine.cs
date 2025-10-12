@@ -53,10 +53,8 @@ namespace PPMusicBot.Services
 
                 if (parsedData != null && parsedData.tracks.Count > 0)
                 {
-                    var objectToPlay = parsedData.tracks[0];
-                    string trackUrl = _baseAddress + $"file/createMusicStream/{objectToPlay.MusicFile[0].id}";
 
-                    return new KenobiAPISearchResult(objectToPlay, trackUrl);
+                    return new KenobiAPISearchResult(parsedData.tracks);
                 }
                 else
                 {
@@ -70,11 +68,14 @@ namespace PPMusicBot.Services
                 return null;
             }
         }
+        public Uri GetTrackUriFromTrackObject(KenobiAPIModels.MusicTrack track)
+        {
+            return new Uri(_baseAddress + $"file/createMusicStream/{track.MusicFile[0].id}");
+        }
     }
 
-    public class KenobiAPISearchResult(KenobiAPIModels.MusicTrack track, string trackUrl)
+    public class KenobiAPISearchResult(List<KenobiAPIModels.ScoredTrack> tracks)
     {
-        public KenobiAPIModels.MusicTrack Track = track;
-        public string TrackUrl = trackUrl;
+        public List<KenobiAPIModels.ScoredTrack> Tracks = tracks;
     };
 }
