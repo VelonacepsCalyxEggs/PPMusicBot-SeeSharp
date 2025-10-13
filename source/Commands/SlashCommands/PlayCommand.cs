@@ -98,7 +98,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             }
             var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Tracks[0])).ConfigureAwait(false);
             if (position is 0)
-            {
+            { 
                 await FollowupAsync($"Playing: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Tracks.Count - 1} tracks with it because why the hell not.").ConfigureAwait(false);
             }
             else

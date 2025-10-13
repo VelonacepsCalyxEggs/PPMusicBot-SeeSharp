@@ -10,8 +10,8 @@ namespace PPMusicBot.Models
     {
         public interface IScoredItem
         {
-            double Score { get; set; }
-            string ResultType { get; set; }
+            double score { get; set; }
+            string resultType { get; set; }
         }
 
         public class SearchResultsDto
@@ -21,24 +21,22 @@ namespace PPMusicBot.Models
             public List<ScoredArtist> artists { get; set; } = new List<ScoredArtist>();
         }
 
-        public class ScoredTrack : MusicTrack
+        public class ScoredTrack : MusicTrack, IScoredItem
         {
             public double score { get; set; }
-            public string resultType { get; set; } = "track";
+            public required string resultType { get; set; }
         }
 
-        public class ScoredAlbum : Album
+        public class ScoredAlbum : Album, IScoredItem
         {
             public double score { get; set; }
-            public string resultType { get; set; } = "album";
+            public required string resultType { get; set; }
         }
 
-        public class ScoredArtist
+        public class ScoredArtist : Artist, IScoredItem
         {
-            public string id { get; set; } = string.Empty;
-            public string name { get; set; } = string.Empty;
             public double score { get; set; }
-            public string resultType { get; set; } = "artist";
+            public required string resultType { get; set; }
         }
 
         // Base models with lowercase properties
