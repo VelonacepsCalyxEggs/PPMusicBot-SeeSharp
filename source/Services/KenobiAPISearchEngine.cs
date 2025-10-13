@@ -14,6 +14,7 @@ using Lavalink4NET;
 using System.Collections.Immutable;
 using System.Text.Json;
 using System.Diagnostics.Eventing.Reader;
+using Microsoft.Extensions.Options;
 
 namespace PPMusicBot.Services
 {
@@ -21,7 +22,7 @@ namespace PPMusicBot.Services
     {
         private readonly ILogger<KenobiAPISearchEngineService> _logger;
         private readonly IConfiguration _configuration;
-
+        private readonly HttpClient _httpClient;
         private readonly string _baseAddress;
         private readonly int LOW_THRESHHOLD;
         private readonly int HIGH_THRESHHOLD;
@@ -31,6 +32,8 @@ namespace PPMusicBot.Services
         {
             _logger = logger;
             _configuration = configuration;
+
+            _httpClient = new HttpClient();
 
             string? baseAddress = _configuration["KenobiAPI:BaseUrl"];
             ArgumentNullException.ThrowIfNull(baseAddress);
@@ -49,8 +52,7 @@ namespace PPMusicBot.Services
             string jsonString = JsonConvert.SerializeObject(new { query });
             HttpContent content = new StringContent(jsonString, Encoding.UTF8, "application/json");
 
-            using var client = new HttpClient();
-            HttpResponseMessage? response = await client.PostAsync(url, content) ?? throw new Exception("Response is null");
+            HttpResponseMessage? response = await _httpClient.PostAsync(url, content) ?? throw new Exception("Response is null");
             response.EnsureSuccessStatusCode();
 
             try
@@ -63,7 +65,7 @@ namespace PPMusicBot.Services
 
                 if (parsedData != null)
                 {
-                    return CalculateResponse(parsedData);
+                    return await CalculateResponseAsync(parsedData);
                 }
                 else
                 {
@@ -73,7 +75,7 @@ namespace PPMusicBot.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Could not parse API response. {ex.Message}");
+                _logger.LogError($"Could not parse API response. {ex.Message} {ex.StackTrace}");
                 return null;
             }
         }
@@ -82,27 +84,42 @@ namespace PPMusicBot.Services
             return new Uri(_baseAddress + $"file/createMusicStream/{track.MusicFile[0].id}");
         }
 
-        private KenobiAPISearchResult CalculateResponse(KenobiAPIModels.SearchResultsDto searchResults)
+        private async Task<KenobiAPISearchResult> CalculateResponseAsync(KenobiAPIModels.SearchResultsDto searchResults)
         {
             double highestScoreTrack = 0;
             double highestScoreAlbum = 0;
             if (searchResults.tracks.Count != 0) highestScoreTrack =+ searchResults.tracks[0].score;
             if (searchResults.albums.Count != 0) highestScoreAlbum =+ searchResults.albums[0].score;
 
-            var slicedTracks = searchResults.tracks[..^1];
-            var slicedAlbums = searchResults.albums[..^1];
+            var slicedTracks = searchResults.tracks.Skip(1).ToList();
+            var slicedAlbums = searchResults.albums.Skip(1).ToList();
             if (highestScoreTrack != 0 && highestScoreTrack > highestScoreAlbum)
             {
                 var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredTrack>(slicedTracks, highestScoreTrack);
 
-                if (resultState == true) return new KenobiAPISearchResult(searchResults.tracks[..0], []);
+                if (resultState == true) return new KenobiAPISearchResult(searchResults.tracks[..1], []);
                 else return new KenobiAPISearchResult(searchResults.tracks, searchResults.albums, true);
             }
             else if (highestScoreAlbum != 0)
             {
                 var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredAlbum>(slicedAlbums, highestScoreAlbum);
 
-                if (resultState == true) return new KenobiAPISearchResult([], searchResults.albums[..0]);
+                if (resultState == true)
+                {
+
+                    // This should be a separate function.
+                    var url = _baseAddress + $"/music?albumId={searchResults.albums[0].id}&limit=0&sortBy=trackNumber&sortOrder=asc";
+                    var response = await _httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
+                    var options = new JsonSerializerSettings()
+                    {
+                        ContractResolver = new CamelCasePropertyNamesContractResolver()
+                    };
+                    var parsedData = JsonConvert.DeserializeObject<KenobiAPIModels.ApiResponseDto<List<KenobiAPIModels.MusicTrack>>>(await response.Content.ReadAsStringAsync(), options);
+                    if (parsedData == null || parsedData.data == null) throw new NullReferenceException("Album does not contain any songs.");
+                    searchResults.albums[..1][0].Music = parsedData.data; 
+                    return new KenobiAPISearchResult([], searchResults.albums[..1]);
+                }
                 else return new KenobiAPISearchResult(searchResults.tracks, searchResults.albums, true);
             }
             else
@@ -126,10 +143,11 @@ namespace PPMusicBot.Services
 
   
 
-    public class KenobiAPISearchResult(List<KenobiAPIModels.ScoredTrack> tracks, List<KenobiAPIModels.ScoredAlbum> albums, bool suggestions = false)
+    public class KenobiAPISearchResult(List<KenobiAPIModels.ScoredTrack> tracks, List<KenobiAPIModels.ScoredAlbum> albums, bool suggestion = false, Exception? error = null)
     {
         public List<KenobiAPIModels.ScoredTrack> Tracks = tracks;
         public List<KenobiAPIModels.ScoredAlbum> Albums = albums;
-        public bool Suggestions = suggestions;
+        public bool Suggestion = suggestion;
+        public Exception? Error = error;
     };
 }

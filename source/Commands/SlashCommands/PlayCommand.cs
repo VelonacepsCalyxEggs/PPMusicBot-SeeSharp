@@ -1,9 +1,12 @@
 ﻿namespace Lavalink4NET.Discord_NET.ExampleBot;
 
 using System;
+using System.Linq.Expressions;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Discord;
 using Discord.Interactions;
 using Lavalink4NET.Clients;
 using Lavalink4NET.DiscordNet;
@@ -11,6 +14,7 @@ using Lavalink4NET.Extensions;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Rest.Entities.Tracks;
+using Microsoft.Extensions.Logging;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
@@ -70,67 +74,105 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     [SlashCommand("play", description: "Plays music", runMode: RunMode.Async)]
     public async Task Play(string query)
     {
-        await DeferAsync().ConfigureAwait(false);
-
-        var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
-
-        if (player is null)
+        try
         {
-            return;
-        }
+            await DeferAsync().ConfigureAwait(false);
 
-        var result = await _kenobiAPISearchEngineService.Search(query).ConfigureAwait(false);
+            var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
 
-        if (result is null)
-        {
-            await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
-            return;
-        }
-        // Next step would probably be a proper embed creator and subcommands. I love how it works so far... also I need to not
-        // forget about player event listeners...
-        if (result.Tracks.Count > 1)
-        {
-            var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString, TrackSearchMode.None);
-            if (firstToPlay is null)
+            if (player is null)
             {
-                await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
-                return;
-            }
-            var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Tracks[0])).ConfigureAwait(false);
-            if (position is 0)
-            { 
-                await FollowupAsync($"Playing: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Tracks.Count - 1} tracks with it because why the hell not.").ConfigureAwait(false);
-            }
-            else
-            {
-                await FollowupAsync($"Added to queue: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Tracks.Count - 1} tracks with it because why the hell not.").ConfigureAwait(false);
-            }
-            foreach (var resultTrack in result.Tracks[1..])
-            {
-                var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None);
-                if (track is null) { continue; }
-                await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
-            }
-        }
-        else
-        {
-            var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString, TrackSearchMode.None);
-            if (track is null)
-            {
-                await FollowupAsync("Lavalink could not load the track.");
                 return;
             }
 
-            var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Tracks[0])).ConfigureAwait(false);
+            var result = await _kenobiAPISearchEngineService.Search(query).ConfigureAwait(false);
 
-            if (position is 0)
+            if (result is null)
             {
-                await FollowupAsync($"Playing: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+                await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
+                return;
+            }
+
+            if (result.Suggestion)
+            {
+                await FollowupAsync("The result is a suggestion. Displaying it is not implemented yet.").ConfigureAwait(false);
+                return;
+            }
+            // Next step would probably be a proper embed creator and subcommands. I love how it works so far... also I need to not
+            // forget about player event listeners...
+            if (result.Tracks.Count > 1)
+            {
+                var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString, TrackSearchMode.None);
+                if (firstToPlay is null)
+                {
+                    await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
+                    return;
+                }
+                var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Tracks[0])).ConfigureAwait(false);
+                if (position is 0)
+                {
+                    await FollowupAsync($"Playing: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Tracks.Count - 1} tracks.").ConfigureAwait(false);
+                }
+                else
+                {
+                    await FollowupAsync($"Added to queue: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Tracks.Count - 1} tracks.").ConfigureAwait(false);
+                }
+                foreach (var resultTrack in result.Tracks[1..])
+                {
+                    var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None);
+                    if (track is null) { continue; }
+                    await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
+                }
+            }
+            else if (result.Albums.Count == 1)
+            {
+                var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]).OriginalString, TrackSearchMode.None);
+                if (firstToPlay is null)
+                {
+                    await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
+                    return;
+                }
+                var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Albums[0].Music[0])).ConfigureAwait(false);
+                if (position is 0)
+                {
+                    await FollowupAsync($"Playing: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Albums[0].Music.Count - 1} tracks.").ConfigureAwait(false);
+                }
+                else
+                {
+                    await FollowupAsync($"Added to queue: **{firstToPlay.Title}** by **{firstToPlay.Author}** and another {result.Albums[0].Music.Count - 1} tracks.").ConfigureAwait(false);
+                }
+                foreach (var resultTrack in result.Albums[0].Music[1..])
+                {
+                    var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None);
+                    if (track is null) { continue; }
+                    await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
+                }
             }
             else
             {
-                await FollowupAsync($"Added to queue: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+                var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString, TrackSearchMode.None);
+                if (track is null)
+                {
+                    await FollowupAsync("Lavalink could not load the track.");
+                    return;
+                }
+
+                var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Tracks[0])).ConfigureAwait(false);
+
+                if (position is 0)
+                {
+                    await FollowupAsync($"Playing: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+                }
+                else
+                {
+                    await FollowupAsync($"Added to queue: **{track.Title}** by **{track.Author}**").ConfigureAwait(false);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"{ex.Message} {ex.StackTrace}");
+            throw;
         }
     }
 
@@ -154,7 +196,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             return;
         }
 
-        var customData = PlayerExtensions.GetCustomData(player);
+        var customData = PlayerExtensions.GetCustomData(player.CurrentItem);
         await RespondAsync($"Position: {player.Position?.Position} / {player.CurrentTrack?.Duration} {customData?.title ?? player.CurrentTrack?.Title}.").ConfigureAwait(false);
     }
 
@@ -275,6 +317,58 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
         await player.ResumeAsync().ConfigureAwait(false);
         await RespondAsync("Resumed.").ConfigureAwait(false);
+    }
+    // After making an embed creator, this will need buttons to turn pages, so It would be nice
+    // to have an embed creator that can accept buttons or something...
+    [SlashCommand("queue", description: "Shows the tracks in the queue.", runMode: RunMode.Async)]
+    public async Task QueueAsync()
+    {
+        var player = await GetPlayerAsync(connectToVoiceChannel: false);
+
+        if (player is null)
+        {
+            return;
+        }
+
+        if (player.Queue.IsEmpty)
+        {
+            await RespondAsync("The queue is empty.").ConfigureAwait(false);
+            return;
+        }
+
+        StringBuilder sb = new();
+
+        var totalTime = new TimeSpan();
+
+        for (int i = 0; i < player.Queue.Count; i++)
+        {
+            var customData = PlayerExtensions.GetCustomData(player.Queue[i]);
+            if (customData != null) sb.AppendLine($"{i}. {customData.title} by {customData.artist.name}");
+            else sb.AppendLine($"{i}. {player.Queue[i].Track?.Title} by {player.Queue[i].Track?.Author}");
+            totalTime += (player.Queue[i].Track?.Duration ?? new TimeSpan());
+        }
+        sb.AppendLine($"Total tracks: {player.Queue.Count} | Total time: {totalTime.ToString()}");
+        await RespondAsync(sb.ToString()).ConfigureAwait(false);
+    }
+
+    [SlashCommand("debug", "Debug player state", runMode: RunMode.Async)]
+    public async Task DebugPlayer()
+    {
+        var player = await GetPlayerAsync(connectToVoiceChannel: false);
+        if (player is null) return;
+
+        var debugInfo = new StringBuilder();
+        debugInfo.AppendLine($"Current Track: {player.CurrentTrack?.Title}");
+        debugInfo.AppendLine($"Queue Count: {player.Queue.Count}");
+        debugInfo.AppendLine($"Player State: {player.State}");
+        debugInfo.AppendLine($"Repeat Mode: {player.RepeatMode}");
+
+        for (int i = 0; i < Math.Min(player.Queue.Count, 5); i++)
+        {
+            debugInfo.AppendLine($"Queue[{i}]: {player.Queue[i].Track?.Title}");
+        }
+
+        await RespondAsync(debugInfo.ToString());
     }
 
     /// <summary>

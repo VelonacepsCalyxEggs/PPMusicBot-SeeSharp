@@ -3,6 +3,9 @@ using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
 using Lavalink4NET;
+using Lavalink4NET.Events.Players;
+using Lavalink4NET.Players.Queued;
+using Lavalink4NET.Players.Vote;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -63,6 +66,30 @@ namespace PPMusicBot.Services
             _botClient.Ready += OnReady;
             _botClient.InteractionCreated += OnInteractionCreated;
             _interactionService.InteractionExecuted += OnInteractionExecuted;
+            _audioService.Players.PlayerCreated += OnPlayerCreated;
+            _audioService.TrackStuck += OnTrackStuck;
+            _audioService.TrackException += OnTrackException;
+            _audioService.TrackEnded += OnTrackEnded;
+        }
+
+        private Task OnTrackEnded(object sender, TrackEndedEventArgs eventArgs)
+        {
+            _logger.LogWarning("Track Ended.");
+            return Task.CompletedTask;
+        }
+
+        private async Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
+        {
+            _logger.LogWarning("Track Exception.");
+            VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
+            await pl.SkipAsync();
+        }
+
+        private async Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)
+        {
+            _logger.LogWarning("Track stuck.");
+            VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
+            await pl.SkipAsync();
         }
 
         private async Task OnReady()
@@ -122,6 +149,12 @@ namespace PPMusicBot.Services
             }
         }
 
+        private Task OnPlayerCreated(object sender, PlayerCreatedEventArgs eventArgs)
+        {
+            _logger.LogInformation($"Created a new player for {eventArgs.Player.GuildId}");
+            return Task.CompletedTask;
+        }
+
         private async Task RegisterSlashCommands()
         {
             try
@@ -129,7 +162,7 @@ namespace PPMusicBot.Services
                 //await _interactionService.RegisterCommandsGloballyAsync(true);
                 foreach (var guild in _botClient.Guilds)
                 {
-                     _logger.LogInformation($"Registering commands for guild: {guild.Name}");
+                    _logger.LogInformation($"Registering commands for guild: {guild.Name}");
                      await _interactionService.RegisterCommandsToGuildAsync(guild.Id);
                 }
             }

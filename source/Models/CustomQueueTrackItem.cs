@@ -11,6 +11,10 @@ namespace PPMusicBot.Models
     public class CustomQueueTrackItem(LavalinkTrack track, KenobiAPIModels.MusicTrack musicTrack) : ITrackQueueItem
     {
         public TrackReference Reference => new(track);
+
+        LavalinkTrack? Track => Reference.Track;
+
+        string Identifier => Reference.Identifier!;
         public KenobiAPIModels.MusicTrack MusicTrack => musicTrack;
     }
 }

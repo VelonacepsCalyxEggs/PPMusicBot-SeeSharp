@@ -21,6 +21,12 @@ namespace PPMusicBot.Models
             public List<ScoredArtist> artists { get; set; } = new List<ScoredArtist>();
         }
 
+        public class ApiResponseDto<T>
+        {
+            public T? data { get; set; }
+            public int amount { get; set; }
+        }
+
         public class ScoredTrack : MusicTrack, IScoredItem
         {
             public double score { get; set; }

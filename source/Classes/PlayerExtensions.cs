@@ -4,9 +4,9 @@ using System.Numerics;
 namespace PPMusicBot.Classes;
 public static class PlayerExtensions
 {
-    public static KenobiAPIModels.MusicTrack? GetCustomData(this LavalinkPlayer player)
+    public static KenobiAPIModels.MusicTrack? GetCustomData(this ITrackQueueItem item)
     {
-        return (player.CurrentItem as CustomQueueTrackItem)?.MusicTrack;
+        return (item as CustomQueueTrackItem)?.MusicTrack;
     }
 
     public static bool TryGetCustomData(this LavalinkPlayer player, out KenobiAPIModels.MusicTrack? data)
