@@ -84,7 +84,7 @@ namespace PPMusicBot.Services
             return new Uri(_baseAddress + $"file/createMusicStream/{track.MusicFile[0].id}");
         }
 
-        private async Task<KenobiAPISearchResult> CalculateResponseAsync(KenobiAPIModels.SearchResultsDto searchResults)
+        private async Task<KenobiAPISearchResult?> CalculateResponseAsync(KenobiAPIModels.SearchResultsDto searchResults)
         {
             double highestScoreTrack = 0;
             double highestScoreAlbum = 0;
@@ -120,12 +120,12 @@ namespace PPMusicBot.Services
                     searchResults.albums[..1][0].Music = parsedData.data; 
                     return new KenobiAPISearchResult([], searchResults.albums[..1]);
                 }
-                else return new KenobiAPISearchResult(searchResults.tracks, searchResults.albums, true);
+                else return new KenobiAPISearchResult(searchResults.tracks.Slice(0, Math.Min(searchResults.tracks.Count, MAX_SUGGESTIONS)), searchResults.albums.Slice(0, Math.Min(searchResults.albums.Count, MAX_SUGGESTIONS)), true);
             }
             else
             {
-                // Return suggestions.
-                return new KenobiAPISearchResult(searchResults.tracks, searchResults.albums, true);
+                // Return nothing.
+                return null;
             }
         }
 

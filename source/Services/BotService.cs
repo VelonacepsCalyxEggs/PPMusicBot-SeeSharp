@@ -74,13 +74,13 @@ namespace PPMusicBot.Services
 
         private Task OnTrackEnded(object sender, TrackEndedEventArgs eventArgs)
         {
-            _logger.LogWarning("Track Ended.");
+            _logger.LogInformation("Track Ended.");
             return Task.CompletedTask;
         }
 
         private async Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
         {
-            _logger.LogWarning("Track Exception.");
+            _logger.LogError("Track Exception.");
             VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
             await pl.SkipAsync();
         }
