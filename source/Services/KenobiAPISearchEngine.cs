@@ -28,6 +28,9 @@ namespace PPMusicBot.Services
         private readonly int HIGH_THRESHHOLD;
         private readonly int MAX_SUGGESTIONS;
 
+        public readonly Dictionary<ulong, (KenobiAPISearchResult Result, DateTime Timestamp)> SuggestionCache = [];
+        private static readonly TimeSpan CacheTimeout = TimeSpan.FromMinutes(10);
+
         public KenobiAPISearchEngineService(ILogger<KenobiAPISearchEngineService> logger, IConfiguration configuration)
         {
             _logger = logger;
@@ -46,7 +49,7 @@ namespace PPMusicBot.Services
             HIGH_THRESHHOLD = highThreshhold;
             MAX_SUGGESTIONS = maxSuggestions;
         }
-        public async Task<KenobiAPISearchResult?> Search(string query)
+        public async Task<KenobiAPISearchResult?> Search(string query, ulong interactionId)
         {
             var url = _baseAddress + "music/search";
             string jsonString = JsonConvert.SerializeObject(new { query });
@@ -65,7 +68,13 @@ namespace PPMusicBot.Services
 
                 if (parsedData != null)
                 {
-                    return await CalculateResponseAsync(parsedData);
+                    var parsedResponse = await CalculateResponseAsync(parsedData);
+                    if (parsedResponse is not null && parsedResponse.Suggestion)
+                    {
+                        SuggestionCache.Add(interactionId, (parsedResponse, DateTime.UtcNow));
+                        CleanupOldEntries();
+                    }
+                    return parsedResponse;
                 }
                 else
                 {
@@ -108,16 +117,8 @@ namespace PPMusicBot.Services
                 {
 
                     // This should be a separate function.
-                    var url = _baseAddress + $"/music?albumId={searchResults.albums[0].id}&limit=0&sortBy=trackNumber&sortOrder=asc";
-                    var response = await _httpClient.GetAsync(url);
-                    response.EnsureSuccessStatusCode();
-                    var options = new JsonSerializerSettings()
-                    {
-                        ContractResolver = new CamelCasePropertyNamesContractResolver()
-                    };
-                    var parsedData = JsonConvert.DeserializeObject<KenobiAPIModels.ApiResponseDto<List<KenobiAPIModels.MusicTrack>>>(await response.Content.ReadAsStringAsync(), options);
-                    if (parsedData == null || parsedData.data == null) throw new NullReferenceException("Album does not contain any songs.");
-                    searchResults.albums[..1][0].Music = parsedData.data; 
+                    var parsedData = await RequestAlbumSongsAsync(searchResults.albums[0].id);
+                    searchResults.albums[..1][0].Music = parsedData;
                     return new KenobiAPISearchResult([], searchResults.albums[..1]);
                 }
                 else return new KenobiAPISearchResult(searchResults.tracks.Slice(0, Math.Min(searchResults.tracks.Count, MAX_SUGGESTIONS)), searchResults.albums.Slice(0, Math.Min(searchResults.albums.Count, MAX_SUGGESTIONS)), true);
@@ -138,6 +139,32 @@ namespace PPMusicBot.Services
             if (highestScoreItem >= HIGH_THRESHHOLD) return true;
             if (highestScoreItem < LOW_THRESHHOLD) return false;
             else return true;
+        }
+
+        public async Task<List<KenobiAPIModels.MusicTrack>> RequestAlbumSongsAsync(string albumId)
+        {
+            var url = _baseAddress + $"/music?albumId={albumId}&limit=0&sortBy=trackNumber&sortOrder=asc";
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            var options = new JsonSerializerSettings()
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
+            var parsedData = JsonConvert.DeserializeObject<KenobiAPIModels.ApiResponseDto<List<KenobiAPIModels.MusicTrack>>>(await response.Content.ReadAsStringAsync(), options);
+            if (parsedData == null || parsedData.data == null) throw new NullReferenceException("Album does not contain any songs.");
+            return parsedData.data;
+        }
+        private void CleanupOldEntries()
+        {
+            var now = DateTime.UtcNow;
+            var oldKeys = SuggestionCache.Where(x => now - x.Value.Timestamp > CacheTimeout)
+                                         .Select(x => x.Key)
+                                         .ToList();
+
+            foreach (var key in oldKeys)
+            {
+                SuggestionCache.Remove(key);
+            }
         }
     };
 

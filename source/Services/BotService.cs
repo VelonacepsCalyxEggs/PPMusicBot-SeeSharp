@@ -104,6 +104,9 @@ namespace PPMusicBot.Services
                 _logger.LogInformation($"Loaded {_interactionService.Modules.Count} modules with {_interactionService.SlashCommands.Count} slash commands");
 
                 await RegisterSlashCommands();
+
+                await _botClient.SetStatusAsync(UserStatus.Online);
+                await _botClient.SetCustomStatusAsync(">See sharp >looks inside >blind.");
             }
             catch (Exception ex)
             {
@@ -160,6 +163,12 @@ namespace PPMusicBot.Services
             try
             {
                 //await _interactionService.RegisterCommandsGloballyAsync(true);
+                //var globalCommands = await _botClient.Rest.GetGlobalApplicationCommands();
+                //foreach (var command in globalCommands)
+                //{
+                //    await command.DeleteAsync();
+                //}
+
                 foreach (var guild in _botClient.Guilds)
                 {
                     _logger.LogInformation($"Registering commands for guild: {guild.Name}");

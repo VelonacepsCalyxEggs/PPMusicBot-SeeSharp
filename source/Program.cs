@@ -4,6 +4,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Discord;
 using Lavalink4NET.Extensions;
+using Lavalink4NET.Artwork;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -41,6 +42,7 @@ builder.Services.AddSingleton<InteractionService>(provider =>
 //}
 
 builder.Services.AddLavalink();
+builder.Services.AddSingleton<ArtworkService>();
 builder.Services.AddSingleton<KenobiAPISearchEngineService>();
 builder.Services.AddSingleton<BotService>();
 builder.Services.AddHostedService<BotWorker>();

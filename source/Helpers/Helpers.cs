@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Lavalink4NET.Artwork;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Tracks;
 using PPMusicBot.Classes;
@@ -15,7 +16,7 @@ namespace PPMusicBot.Helpers
 {
     public static class Helpers
     {
-        public static Embed BuildPlayingEmbed(int position, LavalinkTrack? track, KenobiAPISearchResult? result)
+        public static async Task<Embed> BuildPlayingEmbed(int position, LavalinkTrack? track, KenobiAPISearchResult? result, ArtworkService? artworkService)
         {
             if (track is not null)
             {
@@ -24,7 +25,7 @@ namespace PPMusicBot.Helpers
                     Title = position is 0 ? "Playing:" : "Added to queue:",
                     Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].album.name)}**",
                     Footer = new EmbedFooterBuilder() { Text = $" Duration: {track.Duration.ToString("g")} | Position: {position}" },
-                    ImageUrl = result is null ? track.ArtworkUri?.OriginalString : Helpers.GetKenobiApiAlbumPreview(result.Tracks[0].album).OriginalString 
+                    ImageUrl = result is null ? ( artworkService is null ? track.ArtworkUri?.OriginalString : (await artworkService.ResolveAsync(track)).OriginalString) : Helpers.GetKenobiApiAlbumPreview(result.Tracks[0].album).OriginalString 
 
                 }.Build();
             }

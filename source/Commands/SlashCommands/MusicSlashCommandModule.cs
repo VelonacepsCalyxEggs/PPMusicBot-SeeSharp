@@ -1,25 +1,21 @@
-﻿namespace Lavalink4NET.Discord_NET.ExampleBot;
+﻿namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule;
 
 using System;
-using System.Linq.Expressions;
-using System.Net.Http.Json;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Interactions;
-using Lavalink4NET.Clients;
 using Lavalink4NET.DiscordNet;
-using Lavalink4NET.Extensions;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Rest.Entities.Tracks;
+using Lavalink4NET.Artwork;
 using Microsoft.Extensions.Logging;
 using PPMusicBot.Classes;
 using PPMusicBot.Helpers;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
-using static PPMusicBot.Models.KenobiAPIModels;
+using Lavalink4NET;
 
 /// <summary>
 ///     Presents some of the main features of the Lavalink4NET-Library.
@@ -29,9 +25,9 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 {
     private readonly IAudioService _audioService;
     private readonly ILogger<MusicSlashCommandModule> _logger;
+    private readonly ArtworkService _artworkService;
 
     private readonly KenobiAPISearchEngineService _kenobiAPISearchEngineService;
-
     /// <summary>
     ///     Initializes a new instance of the <see cref="MusicModule"/> class.
     /// </summary>
@@ -39,12 +35,13 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     /// <exception cref="ArgumentNullException">
     ///     thrown if the specified <paramref name="audioService"/> is <see langword="null"/>.
     /// </exception>
-    public MusicSlashCommandModule(IAudioService audioService, ILogger<MusicSlashCommandModule> logger, KenobiAPISearchEngineService kenobiAPISearchEngineService)
+    public MusicSlashCommandModule(IAudioService audioService, ILogger<MusicSlashCommandModule> logger, KenobiAPISearchEngineService kenobiAPISearchEngineService, ArtworkService artworkService)
     {
         ArgumentNullException.ThrowIfNull(audioService);
 
         _audioService = audioService;
         _logger = logger;
+        _artworkService = artworkService;
 
         _kenobiAPISearchEngineService = kenobiAPISearchEngineService;
     }
@@ -86,27 +83,45 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
                 return;
             }
 
-            var result = await _kenobiAPISearchEngineService.Search(query).ConfigureAwait(false);
+            var result = await _kenobiAPISearchEngineService.Search(query, Context.Interaction.Id).ConfigureAwait(false);
 
             if (result is null)
             {
-                await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
+                //await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
+                var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube);
+
+                if (track is null)
+                {
+                    await FollowupAsync("Lavalink could not load the track.");
+                    return;
+                }
+
+                var position = await player.PlayAsync(track).ConfigureAwait(false);
+
+                await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, result, _artworkService)).ConfigureAwait(false);
                 return;
             }
 
             if (result.Suggestion)
             {
-
+                var menuBuilder = new SelectMenuBuilder()
+                    .WithPlaceholder("Select an option")
+                    .WithCustomId($"suggestion_selector:{Context.Interaction.Id}") // Include the unique ID
+                    .WithMinValues(1)
+                    .WithMaxValues(1);
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("Maybe you meant:");
                 sb.AppendLine("**Tracks:**");
-                foreach (var item in result.Tracks) {
-                    sb.AppendLine($"{item.title} by {item.artist.name} - Score: {item.score}");
+                for (var i = 0; i < result.Tracks.Count; i++)
+                {
+                    sb.AppendLine($"{result.Tracks[i].title} - Score: {result.Tracks[i].score}");
+                    menuBuilder.AddOption($"Track: {result.Tracks[i].title}", $"track_{i}");
                 }
                 sb.AppendLine("**Albums:**");
-                foreach (var item in result.Albums)
+                for (var i = 0; i < result.Albums.Count; i++)
                 {
-                    sb.AppendLine($"{item.name} - Score: {item.score}");
+                    sb.AppendLine($"{result.Albums[i].name} - Score: {result.Albums[i].score}");
+                    menuBuilder.AddOption($"Album: {result.Albums[i].name}", $"album_{i}");
                 }
                 // This guy needs his own buttons or reactions, I feel like reactions will be much better, or option menu... not sure.
                 var embed = new EmbedBuilder()
@@ -115,47 +130,18 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
                     Description = sb.ToString(),
                     Footer = new EmbedFooterBuilder() { Text = $"Try using quotes to get more exact results for your query."}
                 }.Build();
-                await FollowupAsync(embed: embed).ConfigureAwait(false);
+
+                var components = new ComponentBuilder()
+                    .WithSelectMenu(menuBuilder).Build();
+                await FollowupAsync(embed: embed, components: components).ConfigureAwait(false);
                 return;
             }
             // Uhh... subcommands... right... so, I already made a working embed creator for tracks, so it should work with pretty much anything now.
             // I would need a file subcommand, a youtube subcommand and fromdb subcommand. (curretnly this is basically fromdb)
-            if (result.Tracks.Count > 0)
-            {
-                var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString, TrackSearchMode.None);
 
-                if (track is null)
-                {
-                    await FollowupAsync("Lavalink could not load the track.");
-                    return;
-                }
-
-                var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Tracks[0])).ConfigureAwait(false);
-
-                await FollowupAsync(embed: Helpers.BuildPlayingEmbed(position, track, result)).ConfigureAwait(false);
-            }
-            else if (result.Albums.Count == 1)
-            {
-                var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]).OriginalString, TrackSearchMode.None);
-                if (firstToPlay is null)
-                {
-                    await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
-                    return;
-                }
-                var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Albums[0].Music[0])).ConfigureAwait(false);
-
-                await FollowupAsync(embed: Helpers.BuildPlayingEmbed(position, null, result)).ConfigureAwait(false);
-                foreach (var resultTrack in result.Albums[0].Music[1..])
-                {
-                    var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None);
-                    if (track is null) { continue; }
-                    await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
-                }
-            }
-            else
-            {
-                throw new ArgumentNullException(nameof(result));
-            }
+            // After I make the suggestion display handler, I should make a separate subcommand for database, youtube and external tracks, fairly sure Lavalink
+            // Should handle those pretty well itself, we'll see though.
+            await PlayDatabaseTracks(player, result);
         }
         catch (Exception ex)
         {
@@ -163,6 +149,61 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             throw;
         }
     }
+
+    [ComponentInteraction("suggestion_selector:*")]
+    public async Task HandleSuggestionSelection(ulong interactionId, string[] selectedOptions)
+    {
+        try
+        {
+            await DeferAsync().ConfigureAwait(false);
+            if (!_kenobiAPISearchEngineService.SuggestionCache.ContainsKey(interactionId)) {
+                await FollowupAsync("This suggestion menu has expired. Please try your search again.").ConfigureAwait(false);
+                return;
+            }
+            var result = _kenobiAPISearchEngineService.SuggestionCache[interactionId].Result;
+            if (result == null)
+            {
+                await FollowupAsync("This suggestion menu has expired. Please try your search again.").ConfigureAwait(false);
+                return;
+            }
+
+            var selectedValue = selectedOptions.First();
+            var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
+
+            if (player is null)
+            {
+                await FollowupAsync("Unable to connect to voice channel.").ConfigureAwait(false);
+                return;
+            }
+            // Parse the selection
+            if (selectedValue.StartsWith("track_"))
+            {
+                var trackIndex = int.Parse(selectedValue.Substring(6));
+                result.Albums.Clear();
+                await PlayDatabaseTracks(player, result, wantedTrackIndex: trackIndex, doModifyOriginalResponse: true);
+            }
+            else if (selectedValue.StartsWith("album_"))
+            {
+                var albumIndex = int.Parse(selectedValue.Substring(6));
+                result.Tracks.Clear();
+                await PlayDatabaseTracks(player, result, wantedAlbumIndex:  albumIndex, doModifyOriginalResponse: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"{ex.Message} {ex.StackTrace}");
+            await FollowupAsync("An error occurred while processing your selection.").ConfigureAwait(false);
+            await ModifyOriginalResponseAsync(msg =>
+            {
+                msg.Components = new ComponentBuilder().Build();
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            _kenobiAPISearchEngineService.SuggestionCache.Remove(interactionId);
+        }
+    }
+
 
     /// <summary>
     ///     Shows the track position asynchronously.
@@ -454,5 +495,63 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         }
 
         return result.Player;
+    }
+
+    private async Task PlayDatabaseTracks(VoteLavalinkPlayer player, KenobiAPISearchResult result, int wantedTrackIndex = 0, int wantedAlbumIndex = 0, bool doModifyOriginalResponse = false)
+    {
+        if (result.Tracks.Count > 0 && result.Albums.Count == 0)
+        {
+            var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString, TrackSearchMode.None);
+
+            if (track is null)
+            {
+                await FollowupAsync("Lavalink could not load the track.");
+                return;
+            }
+            result.Tracks = [result.Tracks[wantedTrackIndex]];
+            var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Tracks[0])).ConfigureAwait(false);
+
+            if (!doModifyOriginalResponse) await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, result, null)).ConfigureAwait(false);
+            else await ModifyOriginalResponseAsync(async msg =>
+            {
+                msg.Embed = await Helpers.BuildPlayingEmbed(position, track, result, null);
+                msg.Components = new ComponentBuilder().Build();
+            }).ConfigureAwait(false);
+        }
+        else if (result.Albums.Count > 0)
+        {
+            if (wantedAlbumIndex != 0)
+            {
+                result.Albums = [result.Albums[wantedAlbumIndex]];
+            }
+            if (result.Albums[0].Music.Count == 0)
+            {
+                result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].id);
+            }
+            var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]).OriginalString, TrackSearchMode.None);
+            if (firstToPlay is null)
+            {
+                await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
+                return;
+            }
+            var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Albums[0].Music[0])).ConfigureAwait(false);
+
+            if (!doModifyOriginalResponse) await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, null, result, null)).ConfigureAwait(false);
+            else await ModifyOriginalResponseAsync(async msg =>
+            {
+                msg.Embed = await Helpers.BuildPlayingEmbed(position, null, result, null);
+                msg.Components = new ComponentBuilder().Build();
+            }).ConfigureAwait(false);
+            foreach (var resultTrack in result.Albums[0].Music[1..])
+                {
+                    var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None);
+                    if (track is null) { continue; }
+                    await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
+                }
+        }
+        else
+        {
+            throw new ArgumentNullException(nameof(result));
+        }
     }
 }
