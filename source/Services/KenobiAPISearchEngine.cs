@@ -100,18 +100,24 @@ namespace PPMusicBot.Services
             if (searchResults.tracks.Count != 0) highestScoreTrack =+ searchResults.tracks[0].score;
             if (searchResults.albums.Count != 0) highestScoreAlbum =+ searchResults.albums[0].score;
 
+            
+
             var slicedTracks = searchResults.tracks.Skip(1).ToList();
             var slicedAlbums = searchResults.albums.Skip(1).ToList();
+
+            if (highestScoreAlbum == highestScoreTrack) 
+                return new KenobiAPISearchResult(searchResults.tracks.Slice(0, Math.Min(searchResults.tracks.Count, MAX_SUGGESTIONS)), searchResults.albums.Slice(0, Math.Min(searchResults.albums.Count, MAX_SUGGESTIONS)), true);
+
             if (highestScoreTrack != 0 && highestScoreTrack > highestScoreAlbum)
             {
-                var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredTrack>(slicedTracks, highestScoreTrack);
+                var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredTrack>(slicedTracks, highestScoreTrack, highestScoreAlbum);
 
                 if (resultState == true) return new KenobiAPISearchResult(searchResults.tracks[..1], []);
-                else return new KenobiAPISearchResult(searchResults.tracks, searchResults.albums, true);
-            }
+                else return new KenobiAPISearchResult(searchResults.tracks.Slice(0, Math.Min(searchResults.tracks.Count, MAX_SUGGESTIONS)), searchResults.albums.Slice(0, Math.Min(searchResults.albums.Count, MAX_SUGGESTIONS)), true);
+                }
             else if (highestScoreAlbum != 0)
             {
-                var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredAlbum>(slicedAlbums, highestScoreAlbum);
+                var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredAlbum>(slicedAlbums, highestScoreAlbum, highestScoreTrack);
 
                 if (resultState == true)
                 {
@@ -130,14 +136,14 @@ namespace PPMusicBot.Services
             }
         }
 
-        private bool DetermineSearchResultState<T>(List<T> items, double highestScoreItem) where T : KenobiAPIModels.IScoredItem
+        private bool DetermineSearchResultState<T>(List<T> items, double highScorePrimary, double highScoreSecondary) where T : KenobiAPIModels.IScoredItem
         {
             foreach (var item in items)
             {
-                if (item.score == highestScoreItem) return false;
+                if (item.score == highScorePrimary || item.score == highScoreSecondary) return false;
             }
-            if (highestScoreItem >= HIGH_THRESHHOLD) return true;
-            if (highestScoreItem < LOW_THRESHHOLD) return false;
+            if (highScorePrimary >= HIGH_THRESHHOLD) return true;
+            if (highScorePrimary < LOW_THRESHHOLD) return false;
             else return true;
         }
 

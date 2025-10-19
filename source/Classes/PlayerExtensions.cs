@@ -4,16 +4,16 @@ using System.Numerics;
 namespace PPMusicBot.Classes;
 public static class PlayerExtensions
 {
-    public static KenobiAPIModels.MusicTrack? GetCustomData(this ITrackQueueItem item)
+    public static CustomQueueTrackItem? GetCustomData(this ITrackQueueItem item)
     {
-        return (item as CustomQueueTrackItem)?.MusicTrack;
+        return (item as CustomQueueTrackItem);
     }
 
-    public static bool TryGetCustomData(this LavalinkPlayer player, out KenobiAPIModels.MusicTrack? data)
+    public static bool TryGetCustomData(this LavalinkPlayer player, out CustomQueueTrackItem? data)
     {
         if (player.CurrentItem is CustomQueueTrackItem customItem)
         {
-            data = customItem.MusicTrack;
+            data = customItem;
             return true;
         }
         data = default;

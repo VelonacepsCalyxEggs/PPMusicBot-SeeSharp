@@ -16,6 +16,7 @@ using PPMusicBot.Helpers;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
 using Lavalink4NET;
+using System.Numerics;
 
 /// <summary>
 ///     Presents some of the main features of the Lavalink4NET-Library.
@@ -111,19 +112,24 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
                     .WithMaxValues(1);
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("Maybe you meant:");
-                sb.AppendLine("**Tracks:**");
-                for (var i = 0; i < result.Tracks.Count; i++)
+                if (result.Tracks.Count > 0)
                 {
-                    sb.AppendLine($"{result.Tracks[i].title} - Score: {result.Tracks[i].score}");
-                    menuBuilder.AddOption($"Track: {result.Tracks[i].title}", $"track_{i}");
+                    sb.AppendLine("**Tracks:**");
+                    for (var i = 0; i < result.Tracks.Count; i++)
+                    {
+                        sb.AppendLine($"{result.Tracks[i].title} - Score: {result.Tracks[i].score}");
+                        menuBuilder.AddOption($"Track: {result.Tracks[i].title}", $"track_{i}");
+                    }
                 }
-                sb.AppendLine("**Albums:**");
-                for (var i = 0; i < result.Albums.Count; i++)
+                if (result.Albums.Count > 0)
                 {
-                    sb.AppendLine($"{result.Albums[i].name} - Score: {result.Albums[i].score}");
-                    menuBuilder.AddOption($"Album: {result.Albums[i].name}", $"album_{i}");
+                    sb.AppendLine("**Albums:**");
+                    for (var i = 0; i < result.Albums.Count; i++)
+                    {
+                        sb.AppendLine($"{result.Albums[i].name} - Score: {result.Albums[i].score}");
+                        menuBuilder.AddOption($"Album: {result.Albums[i].name}", $"album_{i}");
+                    }
                 }
-                // This guy needs his own buttons or reactions, I feel like reactions will be much better, or option menu... not sure.
                 var embed = new EmbedBuilder()
                 {
                     Title = "Oh oh! We are unsure about what you want...",
@@ -204,31 +210,6 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         }
     }
 
-
-    /// <summary>
-    ///     Shows the track position asynchronously.
-    /// </summary>
-    /// <returns>a task that represents the asynchronous operation</returns>
-    [SlashCommand("position", description: "Shows the track position", runMode: RunMode.Async)]
-    public async Task Position()
-    {
-        var player = await GetPlayerAsync(connectToVoiceChannel: false).ConfigureAwait(false);
-
-        if (player is null)
-        {
-            return;
-        }
-
-        if (player.CurrentItem is null)
-        {
-            await RespondAsync("Nothing playing!").ConfigureAwait(false);
-            return;
-        }
-
-        var customData = PlayerExtensions.GetCustomData(player.CurrentItem);
-        await RespondAsync($"Position: {player.Position?.Position} / {player.CurrentTrack?.Duration} {customData?.title ?? player.CurrentTrack?.Title}.").ConfigureAwait(false);
-    }
-
     /// <summary>
     ///     Stops the current track asynchronously.
     /// </summary>
@@ -258,12 +239,12 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     /// </summary>
     /// <param name="volume">the volume (1 - 1000)</param>
     /// <returns>a task that represents the asynchronous operation</returns>
-    [SlashCommand("volume", description: "Sets the player volume (0 - 1000%)", runMode: RunMode.Async)]
+    [SlashCommand("volume", description: "Sets the player volume (0 - 200%)", runMode: RunMode.Async)]
     public async Task Volume(int volume = 100)
     {
-        if (volume is > 1000 or < 0)
+        if (volume is > 200 or < 0)
         {
-            await RespondAsync("Volume out of range: 0% - 1000%!").ConfigureAwait(false);
+            await RespondAsync("Volume out of range: 0% - 200%!").ConfigureAwait(false);
             return;
         }
 
@@ -290,7 +271,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
         if (player.CurrentItem is null)
         {
-            await RespondAsync("Nothing playing!").ConfigureAwait(false);
+            await RespondAsync("Nothing playing!", ephemeral: true).ConfigureAwait(false);
             return;
         }
 
@@ -300,7 +281,12 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
         if (track is not null)
         {
-            await RespondAsync($"Skipped. Now playing: {track.Track!.Uri}").ConfigureAwait(false);
+            var embed = new EmbedBuilder()
+            {
+                Title = "Skipped.",
+                Description = $"Now Playing: {track.Reference.Track?.Title}"
+            }.Build();
+            await RespondAsync(embed: embed).ConfigureAwait(false);
         }
         else
         {
@@ -346,6 +332,134 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
         await player.ResumeAsync().ConfigureAwait(false);
         await RespondAsync("Resumed.").ConfigureAwait(false);
+    }
+
+    [SlashCommand("np", description: "Displays the currently playing track.", runMode: RunMode.Async)]
+    public async Task NowPlayingAsync()
+    {
+        var player = await GetPlayerAsync(connectToVoiceChannel: false);
+
+        if (player is null)
+        {
+            return;
+        }
+
+        if (player.CurrentItem is null)
+        {
+            await RespondAsync("Nothing playing!", ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+
+        var track = player.CurrentItem;
+
+        if (track is not null)
+        {
+            await RespondAsync(embed: await Helpers.BuildCurrentlyPlayingEmbed(track, player, _artworkService)).ConfigureAwait(false);
+        }
+        else
+        {
+            await RespondAsync("Current track is nothing? Report this to the developer.").ConfigureAwait(false);
+        }
+    }
+
+    [SlashCommand("move", description: "Moves a track to a new position.", runMode: RunMode.Async)]
+    public async Task MoveAsync(int trackToMove, int position)
+    {
+        var player = await GetPlayerAsync(connectToVoiceChannel: false);
+
+        if (player is null)
+        {
+            return;
+        }
+
+        if (player.Queue.Count is 0)
+        {
+            await RespondAsync("The queue is empty!", ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+
+        if (trackToMove - 1 > player.Queue.Count || trackToMove - 1 < 0)
+        {
+            await RespondAsync("There is no track on that position.", ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+        var item = player.Queue[trackToMove - 1];
+        if (position > player.Queue.Count)
+        {
+            // move the track to the end of the queue
+            await player.Queue.RemoveAtAsync(trackToMove - 1);
+            _ = player.Queue.Append(item);
+            await RespondAsync("Moved the track to the end of the queue.").ConfigureAwait(false);
+            return;
+        }
+        else if (position - 1 <= 0)
+        {
+            // move the track to the first position
+            await player.Queue.RemoveAtAsync(trackToMove - 1);
+            _ = player.Queue.Prepend(item);
+            await RespondAsync("Moved the track to the start of the queue.").ConfigureAwait(false);
+            return;
+        }
+        else
+        {
+            await player.Queue.RemoveAtAsync(trackToMove - 1);
+            await player.Queue.InsertAsync(position - 1, item);
+            await RespondAsync($"Inserted the track to position number {position}.").ConfigureAwait(false);
+            return;
+        }
+    }
+
+    [SlashCommand("remove", description: "Remove a track or a range of tracks from the queue.", runMode: RunMode.Async)]
+    public async Task RemoveAsync(int position1, int? position2)
+    {
+        var player = await GetPlayerAsync(connectToVoiceChannel: false);
+
+        if (player is null)
+        {
+            return;
+        }
+
+        if (player.Queue.Count is 0)
+        {
+            await RespondAsync("The queue is empty!", ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+
+        if (position1 - 1 > player.Queue.Count || position1 - 1 < 0)
+        {
+            await RespondAsync($"There is nothing on position {position1}!", ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+        if (position1 > player.Queue.Count || position1 - 1 < 0)
+        {
+            await RespondAsync("The first position is larger than the queue or less than one.").ConfigureAwait(false);
+            return;
+        }
+
+        if (position2 is null)
+        {
+            await player.Queue.RemoveAtAsync(position1 - 1);
+            await RespondAsync($"Removed the track at position {position1 - 1}").ConfigureAwait(false);
+            return;
+        }
+        else if (position2 is not null) 
+        {
+            int startPos = Math.Clamp(position1, 1, player.Queue.Count);
+            int endPos = Math.Clamp((int)position2, 1, player.Queue.Count);
+
+            if (startPos > endPos)
+            {
+                (startPos, endPos) = (endPos, startPos);
+            }
+
+            int startIndex = startPos - 1;
+            int amountToRemove = endPos - startPos + 1;
+
+            amountToRemove = Math.Clamp(amountToRemove, 0, player.Queue.Count - startIndex);
+
+            await player.Queue.RemoveRangeAsync(startIndex, amountToRemove);
+            await RespondAsync($"Removed tracks from position {startPos} to {endPos}. (removed {amountToRemove} tracks)").ConfigureAwait(false);
+        }
     }
 
     [SlashCommand("queue", description: "Shows the tracks in the queue.", runMode: RunMode.Async)]

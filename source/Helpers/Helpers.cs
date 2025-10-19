@@ -1,16 +1,12 @@
 ﻿using Discord;
 using Lavalink4NET.Artwork;
+using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Tracks;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace PPMusicBot.Helpers
 {
@@ -51,6 +47,38 @@ namespace PPMusicBot.Helpers
             }
         }
 
+        public static async Task<Embed> BuildCurrentlyPlayingEmbed(ITrackQueueItem item, VoteLavalinkPlayer player, ArtworkService? artworkService)
+        {
+            var track = PlayerExtensions.GetCustomData(item);
+            if (track is null)
+            {
+                var referenceTrack = item.Track;
+                if (referenceTrack is null)
+                    throw new ArgumentNullException(nameof(referenceTrack));
+                return new EmbedBuilder()
+                {
+                    Title = "Currently playing:",
+                    Description = $"**{referenceTrack.Title}** by **{referenceTrack.Author}** from **{referenceTrack.Uri}**",
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {referenceTrack.Duration.ToString("g")} | {player.Position?.Position}" },
+                    ImageUrl = artworkService is null ? referenceTrack.ArtworkUri?.OriginalString : (await artworkService.ResolveAsync(referenceTrack)).OriginalString,
+                }.Build();
+            }
+            else if (track is not null && track.Reference.Track is not null)
+            {
+                return new EmbedBuilder()
+                {
+                    Title = "Currently playing:",
+                    Description = $"**{track.MusicTrack.title}** by **{track.MusicTrack.artist.name}** from **{track.MusicTrack.album.name}**",
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {track.Reference.Track.Duration.ToString("g")} | {player.Position?.Position}" },
+                    ImageUrl = Helpers.GetKenobiApiAlbumPreview(track.MusicTrack.album).OriginalString
+                }.Build();
+            }
+            else
+            {
+                throw new ArgumentNullException(nameof(track.Reference.Track));
+            }
+        }
+
         public static (Embed, MessageComponent) BuildQueueEmbed(IVoteLavalinkPlayer player, int page)
         {
             const int tracksPerPage = 10;
@@ -71,7 +99,7 @@ namespace PPMusicBot.Helpers
                 var customData = PlayerExtensions.GetCustomData(track);
 
                 if (customData != null)
-                    sb.AppendLine($"{i + 1}. {customData.title} by {customData.artist.name}");
+                    sb.AppendLine($"{i + 1}. {customData?.MusicTrack.title} by {customData?.MusicTrack.artist.name}");
                 else
                     sb.AppendLine($"{i + 1}. {track.Track?.Title} by {track.Track?.Author}");
 
