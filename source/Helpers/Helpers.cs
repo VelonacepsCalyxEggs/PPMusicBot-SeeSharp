@@ -20,7 +20,7 @@ namespace PPMusicBot.Helpers
                 {
                     Title = position is 0 ? "Playing:" : "Added to queue:",
                     Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].album.name)}**",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {track.Duration.ToString("g")} | Position: {position}" },
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {track.Duration.ToString(@"hh\:mm\:ss")} | Position: {position}" },
                     ImageUrl = result is null ? ( artworkService is null ? track.ArtworkUri?.OriginalString : (await artworkService.ResolveAsync(track)).OriginalString) : Helpers.GetKenobiApiAlbumPreview(result.Tracks[0].album).OriginalString 
 
                 }.Build();
@@ -36,7 +36,7 @@ namespace PPMusicBot.Helpers
                 {
                     Title = position is 0 ? "Playing:" : "Added to queue:",
                     Description = $"**{result.Albums[0].name}** with {result.Albums[0].Music.Count} tracks.",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration.ToString("g")} | From position: {position} to {position + result.Albums[0].Music.Count - 1}" },
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration.ToString(@"hh\:mm\:ss")} | From position: {position} to {position + result.Albums[0].Music.Count - 1}" },
                     ImageUrl = Helpers.GetKenobiApiAlbumPreview(result.Albums[0]).OriginalString
 
                 }.Build();
@@ -59,7 +59,7 @@ namespace PPMusicBot.Helpers
                 {
                     Title = "Currently playing:",
                     Description = $"**{referenceTrack.Title}** by **{referenceTrack.Author}** from **{referenceTrack.Uri}**",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {referenceTrack.Duration.ToString("g")} | {player.Position?.Position}" },
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {referenceTrack.Duration.ToString(@"hh\:mm\:ss")} | {player.Position?.Position.ToString(@"hh\:mm\:ss")}" },
                     ImageUrl = artworkService is null ? referenceTrack.ArtworkUri?.OriginalString : (await artworkService.ResolveAsync(referenceTrack)).OriginalString,
                 }.Build();
             }
@@ -69,7 +69,7 @@ namespace PPMusicBot.Helpers
                 {
                     Title = "Currently playing:",
                     Description = $"**{track.MusicTrack.title}** by **{track.MusicTrack.artist.name}** from **{track.MusicTrack.album.name}**",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {track.Reference.Track.Duration.ToString("g")} | {player.Position?.Position}" },
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {track.Reference.Track.Duration.ToString(@"hh\:mm\:ss")} | {player.Position?.Position.ToString(@"hh\:mm\:ss")}" },
                     ImageUrl = Helpers.GetKenobiApiAlbumPreview(track.MusicTrack.album).OriginalString
                 }.Build();
             }
@@ -119,7 +119,7 @@ namespace PPMusicBot.Helpers
                 Description = sb.ToString(),
                 Footer = new EmbedFooterBuilder()
                 {
-                    Text = $"Tracks {startIndex + 1}-{endIndex} of {totalTracks} | Page time: {pageTotalTime:g} | Total time: {totalTime:g}"
+                    Text = $"Tracks {startIndex + 1}-{endIndex} of {totalTracks} | Page time: {pageTotalTime.ToString(@"hh\:mm\:ss")} | Total time: {totalTime.ToString(@"hh\:mm\:ss")}"
                 },
                 Color = Color.Blue
             }.Build();

@@ -52,7 +52,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     /// </summary>
     /// <returns>a task that represents the asynchronous operation</returns>
     [SlashCommand("disconnect", "Disconnects from the current voice channel connected to", runMode: RunMode.Async)]
-    public async Task Disconnect()
+    public async Task DisconnectAsync()
     {
         var player = await GetPlayerAsync().ConfigureAwait(false);
 
@@ -71,7 +71,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     /// <param name="query">the search query</param>
     /// <returns>a task that represents the asynchronous operation</returns>
     [SlashCommand("play", description: "Plays music", runMode: RunMode.Async)]
-    public async Task Play(string query)
+    public async Task PlayAsync(string query)
     {
         try
         {
@@ -215,7 +215,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     /// </summary>
     /// <returns>a task that represents the asynchronous operation</returns>
     [SlashCommand("stop", description: "Stops the current track", runMode: RunMode.Async)]
-    public async Task Stop()
+    public async Task StopAsync()
     {
         var player = await GetPlayerAsync(connectToVoiceChannel: false);
 
@@ -260,7 +260,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     }
 
     [SlashCommand("skip", description: "Skips the current track", runMode: RunMode.Async)]
-    public async Task Skip()
+    public async Task SkipAsync()
     {
         var player = await GetPlayerAsync(connectToVoiceChannel: false);
 
@@ -337,6 +337,42 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     [SlashCommand("np", description: "Displays the currently playing track.", runMode: RunMode.Async)]
     public async Task NowPlayingAsync()
     {
+        try
+        {
+            var player = await GetPlayerAsync(connectToVoiceChannel: false);
+
+            if (player is null)
+            {
+                return;
+            }
+
+            if (player.CurrentItem is null)
+            {
+                await RespondAsync("Nothing playing!", ephemeral: true).ConfigureAwait(false);
+                return;
+            }
+
+            var track = player.CurrentItem;
+
+            if (track is not null)
+            {
+                await RespondAsync(embed: await Helpers.BuildCurrentlyPlayingEmbed(track, player, _artworkService), ephemeral: true).ConfigureAwait(false);
+            }
+            else
+            {
+                await RespondAsync("Current track is nothing? Report this to the developer.").ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            throw;
+        }
+    }
+
+    [SlashCommand("shuffle", description: "Shuffles the queue randomly.", runMode: RunMode.Async)]
+    public async Task ShuffleAsync()
+    {
         var player = await GetPlayerAsync(connectToVoiceChannel: false);
 
         if (player is null)
@@ -344,22 +380,14 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             return;
         }
 
-        if (player.CurrentItem is null)
+        if (player.Queue.Count is 0)
         {
-            await RespondAsync("Nothing playing!", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("The queue is empty!", ephemeral: true).ConfigureAwait(false);
             return;
         }
 
-        var track = player.CurrentItem;
-
-        if (track is not null)
-        {
-            await RespondAsync(embed: await Helpers.BuildCurrentlyPlayingEmbed(track, player, _artworkService)).ConfigureAwait(false);
-        }
-        else
-        {
-            await RespondAsync("Current track is nothing? Report this to the developer.").ConfigureAwait(false);
-        }
+        await player.Queue.ShuffleAsync();
+        await RespondAsync("The queue was shuffled!", ephemeral: false).ConfigureAwait(false);
     }
 
     [SlashCommand("move", description: "Moves a track to a new position.", runMode: RunMode.Async)]
@@ -388,7 +416,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         {
             // move the track to the end of the queue
             await player.Queue.RemoveAtAsync(trackToMove - 1);
-            _ = player.Queue.Append(item);
+            await player.Queue.AddAsync(item);
             await RespondAsync("Moved the track to the end of the queue.").ConfigureAwait(false);
             return;
         }
@@ -396,7 +424,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         {
             // move the track to the first position
             await player.Queue.RemoveAtAsync(trackToMove - 1);
-            _ = player.Queue.Prepend(item);
+            await player.Queue.InsertAsync(0, item);
             await RespondAsync("Moved the track to the start of the queue.").ConfigureAwait(false);
             return;
         }
@@ -410,7 +438,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     }
 
     [SlashCommand("remove", description: "Remove a track or a range of tracks from the queue.", runMode: RunMode.Async)]
-    public async Task RemoveAsync(int position1, int? position2)
+    public async Task RemoveAsync(int position1, int? position2 = null)
     {
         var player = await GetPlayerAsync(connectToVoiceChannel: false);
 
@@ -439,7 +467,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         if (position2 is null)
         {
             await player.Queue.RemoveAtAsync(position1 - 1);
-            await RespondAsync($"Removed the track at position {position1 - 1}").ConfigureAwait(false);
+            await RespondAsync($"Removed the track at position {position1}").ConfigureAwait(false);
             return;
         }
         else if (position2 is not null) 
@@ -474,7 +502,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
         if (player.Queue.IsEmpty)
         {
-            await RespondAsync("The queue is empty.").ConfigureAwait(false);
+            await RespondAsync("The queue is empty.", ephemeral: true).ConfigureAwait(false);
             return;
         }
 
