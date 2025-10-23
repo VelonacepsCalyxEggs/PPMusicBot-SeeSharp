@@ -80,7 +80,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             try
             {
                 var uriFromQuery = new Uri(query);
-                if (uriFromQuery.Host == "youtube.com" || uriFromQuery.Host == "youtu.be")
+                if (uriFromQuery.Host == "www.youtube.com" || uriFromQuery.Host == "youtu.be" || uriFromQuery.Host == "music.youtube.com")
                 {
                     if (uriFromQuery.Query.Contains("?list="))
                     {
