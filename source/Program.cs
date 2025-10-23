@@ -46,7 +46,7 @@ builder.Services.AddLavalink()
     .ConfigureLavalink(config =>
     {
         config.BaseAddress = new Uri(lavalinkSection["BaseAddress"] ?? "http://localhost:2333");
-        config.WebSocketUri = new Uri(lavalinkSection["BaseAddress"] ?? "ws://localhost:2333");
+        config.WebSocketUri = new Uri(lavalinkSection["WebSocketUri"] ?? "ws://localhost:2333");
         config.ResumptionOptions = new LavalinkSessionResumptionOptions(timeout: (TimeSpan.Parse(lavalinkSection["HttpClient:Timeout"] ?? "00:00:30")));
         config.HttpClientName = "PPMusicBotC#";
         config.Passphrase = lavalinkSection["Passphrase"] ?? "youshallnotpass";

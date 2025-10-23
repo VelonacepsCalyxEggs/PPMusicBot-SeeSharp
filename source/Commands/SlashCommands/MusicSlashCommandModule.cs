@@ -65,6 +65,29 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         await RespondAsync("Disconnected.").ConfigureAwait(false);
     }
 
+    [SlashCommand("play-yt", description: "A test command for youtube music and such.", runMode: RunMode.Async)]
+    public async Task PlayYoutubeAsync(string query)
+    {
+        await DeferAsync().ConfigureAwait(false);
+
+        var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
+
+        if (player is null)
+        {
+            return;
+        }
+        var uriFromQuery = new Uri(query);
+        if (uriFromQuery.Host == "youtube.com" || uriFromQuery.Host == "youtu.be")
+        {
+            //if (uriFromQuery.)
+            return;
+        }
+        else
+        {
+            await RespondAsync("This does not seem to be a proper youtube url.");
+            return;
+        }
+    }
     /// <summary>
     ///     Plays music asynchronously.
     /// </summary>
