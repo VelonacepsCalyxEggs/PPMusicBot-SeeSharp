@@ -107,34 +107,41 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
             {
                 var menuBuilder = new SelectMenuBuilder()
                     .WithPlaceholder("Select an option")
-                    .WithCustomId($"suggestion_selector:{Context.Interaction.Id}") // Include the unique ID
+                    .WithCustomId($"suggestion_selector:{Context.Interaction.Id}")
                     .WithMinValues(1)
                     .WithMaxValues(1);
+
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("Maybe you meant:");
+
                 if (result.Tracks.Count > 0)
                 {
                     sb.AppendLine("**Tracks:**");
-                    for (var i = 0; i < result.Tracks.Count; i++)
+                    var trackCount = Math.Min(result.Tracks.Count, 15);
+                    for (var i = 0; i < trackCount; i++)
                     {
                         sb.AppendLine($"{result.Tracks[i].title} - Score: {result.Tracks[i].score}");
                         menuBuilder.AddOption($"Track: {result.Tracks[i].title}", $"track_{i}");
                     }
                 }
-                if (result.Albums.Count > 0)
+
+                if (result.Albums.Count > 0 && menuBuilder.Options.Count < 25)
                 {
                     sb.AppendLine("**Albums:**");
-                    for (var i = 0; i < result.Albums.Count; i++)
+                    var remainingSlots = 25 - menuBuilder.Options.Count;
+                    var albumCount = Math.Min(result.Albums.Count, remainingSlots);
+                    for (var i = 0; i < albumCount; i++)
                     {
                         sb.AppendLine($"{result.Albums[i].name} - Score: {result.Albums[i].score}");
                         menuBuilder.AddOption($"Album: {result.Albums[i].name}", $"album_{i}");
                     }
                 }
+
                 var embed = new EmbedBuilder()
                 {
                     Title = "Oh oh! We are unsure about what you want...",
                     Description = sb.ToString(),
-                    Footer = new EmbedFooterBuilder() { Text = $"Try using quotes to get more exact results for your query."}
+                    Footer = new EmbedFooterBuilder() { Text = $"Try using quotes to get more exact results for your query." }
                 }.Build();
 
                 var components = new ComponentBuilder()

@@ -78,11 +78,12 @@ namespace PPMusicBot.Services
             return Task.CompletedTask;
         }
 
-        private async Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
+        private  Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
         {
             _logger.LogError($"Track Exeption: {eventArgs.Exception.Cause}: {eventArgs.Exception.Message} \n Track: {eventArgs.Track.Title}");
             //VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
-            //await pl.SkipAsync();
+            //await pl.SkipAsync()
+            return Task.CompletedTask;
         }
 
         private async Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)

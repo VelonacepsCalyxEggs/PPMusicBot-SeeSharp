@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using Discord;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.Artwork;
+using Lavalink4NET;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -40,8 +41,16 @@ builder.Services.AddSingleton<InteractionService>(provider =>
 //{
 //    builder.Services.AddSingleton(moduleType);
 //}
-
-builder.Services.AddLavalink();
+var lavalinkSection = builder.Configuration.GetSection("Lavalink");
+builder.Services.AddLavalink()
+    .ConfigureLavalink(config =>
+    {
+        config.BaseAddress = new Uri(lavalinkSection["BaseAddress"] ?? "http://localhost:2333");
+        config.WebSocketUri = new Uri(lavalinkSection["BaseAddress"] ?? "ws://localhost:2333");
+        config.ResumptionOptions = new LavalinkSessionResumptionOptions(timeout: (TimeSpan.Parse(lavalinkSection["HttpClient:Timeout"] ?? "00:00:30")));
+        config.HttpClientName = "PPMusicBotC#";
+        config.Passphrase = lavalinkSection["Passphrase"] ?? "youshallnotpass";
+    });
 builder.Services.AddSingleton<ArtworkService>();
 builder.Services.AddSingleton<KenobiAPISearchEngineService>();
 builder.Services.AddSingleton<BotService>();
