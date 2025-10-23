@@ -1,5 +1,4 @@
 ﻿namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule;
-
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,13 +10,10 @@ using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Artwork;
 using Microsoft.Extensions.Logging;
-using PPMusicBot.Classes;
 using PPMusicBot.Helpers;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
 using Lavalink4NET;
-using System.Numerics;
-using Discord.Commands;
 
 /// <summary>
 ///     Presents some of the main features of the Lavalink4NET-Library.
