@@ -128,7 +128,7 @@ namespace PPMusicBot.Services
             if (!result.IsSuccess)
             {
                 _logger.LogError($"Interaction executed but failed: {result.ErrorReason} {result.Error}");
-
+                
                 switch (result.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
@@ -143,7 +143,6 @@ namespace PPMusicBot.Services
                     default:
                         if (!context.Interaction.HasResponded)
                             await context.Interaction.RespondAsync($"An error occurred: {result.ErrorReason}", ephemeral: true);
-                        else await context.Interaction.FollowupAsync($"An error occurred: {result.ErrorReason}", ephemeral: true);
                         break;
                 }
             }
