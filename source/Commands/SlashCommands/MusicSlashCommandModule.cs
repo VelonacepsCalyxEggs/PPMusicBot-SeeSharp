@@ -17,6 +17,7 @@ using PPMusicBot.Models;
 using PPMusicBot.Services;
 using Lavalink4NET;
 using System.Numerics;
+using Discord.Commands;
 
 /// <summary>
 ///     Presents some of the main features of the Lavalink4NET-Library.
@@ -79,7 +80,37 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         var uriFromQuery = new Uri(query);
         if (uriFromQuery.Host == "youtube.com" || uriFromQuery.Host == "youtu.be")
         {
-            //if (uriFromQuery.)
+            if (uriFromQuery.Query.Contains("?list="))
+            {
+                var playlist = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.YouTube);
+
+                if (playlist.Tracks.Length > 0 && playlist.IsPlaylist)
+                {
+                    await FollowupAsync("We thought the result was a playlist, but it's not or it's empty.");
+                    return;
+                }
+                
+                foreach (var track in playlist.Tracks)
+                {
+                   await player.PlayAsync(track).ConfigureAwait(false);
+                }
+
+                await FollowupAsync($"Added {playlist.Tracks.Length} tracks from {playlist.Playlist?.Name}.").ConfigureAwait(false);
+            }
+            else
+            {
+                var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube);
+
+                if (track is null)
+                {
+                    await FollowupAsync("Lavalink could not load the youtube track.");
+                    return;
+                }
+
+                var position = await player.PlayAsync(track).ConfigureAwait(false);
+
+                await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
+            }
             return;
         }
         else
@@ -111,18 +142,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
             if (result is null)
             {
-                //await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
-                var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube);
-
-                if (track is null)
-                {
-                    await FollowupAsync("Lavalink could not load the track.");
-                    return;
-                }
-
-                var position = await player.PlayAsync(track).ConfigureAwait(false);
-
-                await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, result, _artworkService)).ConfigureAwait(false);
+                await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
                 return;
             }
 
