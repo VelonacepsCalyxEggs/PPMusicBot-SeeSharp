@@ -100,7 +100,10 @@ namespace PPMusicBot.Services
             if (searchResults.tracks.Count != 0) highestScoreTrack =+ searchResults.tracks[0].score;
             if (searchResults.albums.Count != 0) highestScoreAlbum =+ searchResults.albums[0].score;
 
-            
+            if (searchResults.tracks.Count == 0 && searchResults.albums.Count == 0)
+            {
+                return null;
+            }            
 
             var slicedTracks = searchResults.tracks.Skip(1).ToList();
             var slicedAlbums = searchResults.albums.Skip(1).ToList();
