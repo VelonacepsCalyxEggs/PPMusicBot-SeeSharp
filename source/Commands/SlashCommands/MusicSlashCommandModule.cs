@@ -86,7 +86,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
             var position = await player.PlayAsync(track).ConfigureAwait(false);
 
-            await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
+            await FollowupAsync($"Playing [external url]({track.Uri?.OriginalString}).").ConfigureAwait(false);
             return;
         }
         catch (Exception ex)
