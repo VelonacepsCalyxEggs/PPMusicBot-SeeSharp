@@ -61,7 +61,32 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         await player.DisconnectAsync().ConfigureAwait(false);
         await RespondAsync("Disconnected.").ConfigureAwait(false);
     }
+    [SlashCommand("play-external", description: "A file link, icecast stream, etca", runMode: RunMode.Async)]
+    public async Task PlayExternalAsync(string query)
+    {
+        await DeferAsync().ConfigureAwait(false);
 
+        var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
+
+        if (player is null)
+        {
+            await FollowupAsync("Failed to connect to voice channel.").ConfigureAwait(false);
+            return;
+        }
+        // I honestly don't really know how it's supposed to work, so I'll just put it here and hope for the best.
+        var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube);
+
+        if (track is null)
+        {
+            await FollowupAsync("Lavalink could not load the external track.").ConfigureAwait(false);
+            return;
+        }
+
+        var position = await player.PlayAsync(track).ConfigureAwait(false);
+
+        await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
+        return;
+    }
     [SlashCommand("play-yt", description: "A test command for youtube music and such.", runMode: RunMode.Async)]
     public async Task PlayYoutubeAsync(string query)
     {
