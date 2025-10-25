@@ -1,6 +1,5 @@
 ﻿using Lavalink4NET.Players;
 using PPMusicBot.Models;
-using System.Numerics;
 namespace PPMusicBot.Classes;
 public static class PlayerExtensions
 {

@@ -24,6 +24,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     private readonly IAudioService _audioService;
     private readonly ILogger<MusicSlashCommandModule> _logger;
     private readonly ArtworkService _artworkService;
+    private readonly MusicService _musicService;
 
     private readonly KenobiAPISearchEngineService _kenobiAPISearchEngineService;
     /// <summary>
@@ -33,15 +34,18 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
     /// <exception cref="ArgumentNullException">
     ///     thrown if the specified <paramref name="audioService"/> is <see langword="null"/>.
     /// </exception>
-    public MusicSlashCommandModule(IAudioService audioService, ILogger<MusicSlashCommandModule> logger, KenobiAPISearchEngineService kenobiAPISearchEngineService, ArtworkService artworkService)
+    public MusicSlashCommandModule(
+        IAudioService audioService, 
+        ILogger<MusicSlashCommandModule> logger, 
+        KenobiAPISearchEngineService kenobiAPISearchEngineService, 
+        ArtworkService artworkService,
+        MusicService musicService)
     {
-        ArgumentNullException.ThrowIfNull(audioService);
-
         _audioService = audioService;
         _logger = logger;
         _artworkService = artworkService;
-
         _kenobiAPISearchEngineService = kenobiAPISearchEngineService;
+        _musicService = musicService;
     }
 
     /// <summary>
@@ -178,6 +182,8 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         try
         {
             await DeferAsync().ConfigureAwait(false);
+
+            _musicService.SetTextChannelId(Context.Guild.Id, Context.Channel.Id); // Set interaction channel. (For error and service messages)
 
             var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
 

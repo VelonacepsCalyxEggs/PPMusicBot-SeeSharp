@@ -6,6 +6,8 @@ using Discord;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.Artwork;
 using Lavalink4NET;
+using Lavalink4NET.InactivityTracking.Extensions;
+using Lavalink4NET.InactivityTracking;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -32,15 +34,6 @@ builder.Services.AddSingleton<InteractionService>(provider =>
     return new InteractionService(client, interactionConfig);
 });
 
-//// Register all command modules
-//var assembly = Assembly.GetExecutingAssembly();
-//var moduleTypes = assembly.GetTypes()
-//    .Where(t => t.IsSubclassOf(typeof(InteractionModuleBase)) && !t.IsAbstract);
-
-//foreach (var moduleType in moduleTypes)
-//{
-//    builder.Services.AddSingleton(moduleType);
-//}
 var lavalinkSection = builder.Configuration.GetSection("Lavalink");
 builder.Services.AddLavalink()
     .ConfigureLavalink(config =>
@@ -51,7 +44,15 @@ builder.Services.AddLavalink()
         config.HttpClientName = "PPMusicBotC#";
         config.Passphrase = lavalinkSection["Passphrase"] ?? "youshallnotpass";
     });
+builder.Services.AddInactivityTracking();
+builder.Services.ConfigureInactivityTracking(config => 
+{
+    config.DefaultTimeout = new TimeSpan(0, 30, 0);
+    config.InactivityBehavior = PlayerInactivityBehavior.None;
+    config.TrackingMode = InactivityTrackingMode.Any;
+});
 builder.Services.AddSingleton<ArtworkService>();
+builder.Services.AddSingleton<MusicService>();
 builder.Services.AddSingleton<KenobiAPISearchEngineService>();
 builder.Services.AddSingleton<BotService>();
 builder.Services.AddHostedService<BotWorker>();

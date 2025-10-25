@@ -1,14 +1,11 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Discord.Rest;
 using Discord.WebSocket;
 using Lavalink4NET;
 using Lavalink4NET.Events.Players;
-using Lavalink4NET.Players.Queued;
+using Lavalink4NET.InactivityTracking;
+using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using System.Reflection;
 
 namespace PPMusicBot.Services
@@ -20,7 +17,9 @@ namespace PPMusicBot.Services
         private readonly DiscordSocketClient _botClient;
         private readonly InteractionService _interactionService;
         private readonly IAudioService _audioService;
+        private readonly InactivityTrackingService _inactivityTrackingService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly MusicService _musicService;
 
         public BotService(
             ILogger<BotService> logger,
@@ -28,7 +27,9 @@ namespace PPMusicBot.Services
             IServiceProvider serviceProvider,
             DiscordSocketClient botClient,
             InteractionService interactionService,
-            IAudioService audioService)
+            IAudioService audioService,
+            InactivityTrackingService inactivityTrackingService,
+            MusicService musicService)
         {
             _configuration = configuration;
             _logger = logger;
@@ -36,6 +37,8 @@ namespace PPMusicBot.Services
             _botClient = botClient;
             _interactionService = interactionService;
             _audioService = audioService;
+            _inactivityTrackingService = inactivityTrackingService;
+            _musicService = musicService;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -70,11 +73,68 @@ namespace PPMusicBot.Services
             _audioService.TrackStuck += OnTrackStuck;
             _audioService.TrackException += OnTrackException;
             _audioService.TrackEnded += OnTrackEnded;
+            _audioService.DiscordClient.VoiceStateUpdated += OnVoiceStateUpdated;
+            _audioService.DiscordClient.VoiceServerUpdated += OnVoiceServerUpdated;
+            _inactivityTrackingService.PlayerInactive += OnPlayerInactive;
+        }
+
+        private Task OnPlayerInactive(object sender, Lavalink4NET.InactivityTracking.Events.PlayerInactiveEventArgs eventArgs)
+        {
+            return Task.CompletedTask;
+        }
+
+        private Task OnVoiceServerUpdated(object sender, Lavalink4NET.Clients.Events.VoiceServerUpdatedEventArgs eventArgs)
+        {
+            _logger.LogInformation($"Voice Server Updated: {eventArgs.VoiceServer.Endpoint.ToString()}");
+            return Task.CompletedTask;
+        }
+
+        private async Task OnVoiceStateUpdated(object sender, Lavalink4NET.Clients.Events.VoiceStateUpdatedEventArgs eventArgs)
+        {
+            _logger.LogInformation($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
+            if (eventArgs.IsCurrentUser) return;
+            var guild = _botClient.GetGuild(eventArgs.GuildId);
+            if (guild == null) return;
+            var player = await _audioService.Players.GetPlayerAsync<LavalinkPlayer>(guild.Id);
+            if (player == null) return;
+            var botVoiceChannel = guild.GetVoiceChannel(player.VoiceChannelId);
+            if (botVoiceChannel == null) return;
+            var affectedChannelId = eventArgs.OldVoiceState.VoiceChannelId ?? eventArgs.VoiceState.VoiceChannelId;
+            if (!(botVoiceChannel.Id == affectedChannelId)) return;
+            var nonBotUsers = botVoiceChannel.Users.Count(u => !u.IsBot && u.Id != eventArgs.UserId);
+            _logger.LogInformation(nonBotUsers.ToString());
+            if (nonBotUsers == 0)
+            {
+                ulong? interactionChannelId = _musicService.GetTextChannelId(guild.Id);
+                if (interactionChannelId != null) {
+                        var interactionChannel = guild.GetTextChannel((ulong)interactionChannelId);
+                    if (interactionChannel != null)
+                        await interactionChannel.SendMessageAsync("Everyone left the channel.");
+                }
+                await player.StopAsync();
+                await player.DisconnectAsync();
+            }
+            return;
         }
 
         private Task OnTrackEnded(object sender, TrackEndedEventArgs eventArgs)
         {
             _logger.LogInformation("Track Ended.");
+            VoteLavalinkPlayer player = (VoteLavalinkPlayer)eventArgs.Player;
+            if (player.Queue.Count == 0 && player.CurrentItem == null)
+            {
+                var guild = _botClient.GetGuild(eventArgs.Player.GuildId);
+                if (guild != null)
+                {
+                    var textChannelId = _musicService.GetTextChannelId(eventArgs.Player.GuildId);
+                    if (textChannelId != null)
+                    {
+                        var textChannel = guild.GetTextChannel((ulong)textChannelId);
+                        if (textChannel != null)
+                            textChannel.SendMessageAsync("The queue is now empty.");
+                    }
+                }
+            }
             return Task.CompletedTask;
         }
 
@@ -189,8 +249,8 @@ namespace PPMusicBot.Services
                 LogSeverity.Error => LogLevel.Error,
                 LogSeverity.Warning => LogLevel.Warning,
                 LogSeverity.Info => LogLevel.Information,
-                LogSeverity.Verbose => LogLevel.Debug,
-                LogSeverity.Debug => LogLevel.Trace,
+                LogSeverity.Debug => LogLevel.Debug,
+                LogSeverity.Verbose => LogLevel.Trace,
                 _ => LogLevel.Information
             };
 
