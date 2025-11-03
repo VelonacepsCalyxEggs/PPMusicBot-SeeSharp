@@ -139,6 +139,14 @@ namespace PPMusicBot.Helpers
             if (album.coverArt.Count == 0) return new Uri(kenobiAlbumimagesPath);
             return new Uri(kenobiAlbumimagesPath + album.coverArt[0]?.filePath?.Split('\\').Last());
         }
+        // This should probably be encapsulated inside the play function as a constant. 
+        // Remake later.
+        public static bool CheckIfValidContentType(string type)
+        {
+            string[] validTypes = { "audio/mpeg", "video/mp4", "audio/wav", "audio/x-wav", "audio/ogg" };
+            if (validTypes.Contains(type)) return true;
+            else return false;
+        }
 
         private static async Task<string> BuildImageUrlAsync(ArtworkService? artworkService, LavalinkTrack track)
         {

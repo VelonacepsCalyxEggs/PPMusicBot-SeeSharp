@@ -65,6 +65,47 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         await player.DisconnectAsync().ConfigureAwait(false);
         await RespondAsync("Disconnected.").ConfigureAwait(false);
     }
+    [SlashCommand("play-attachment", description: "A file attachment, only mp3,mp4,wav,ogg", runMode: RunMode.Async)]
+    public async Task PlayAttachment(Attachment file)
+    {
+        try
+        {
+            await DeferAsync().ConfigureAwait(false);
+            if (Helpers.CheckIfValidContentType(file.ContentType))
+            {
+                var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
+
+                if (player is null)
+                {
+                    await FollowupAsync("Failed to connect to voice channel.").ConfigureAwait(false);
+                    return;
+                }
+                var track = await _audioService.Tracks.LoadTrackAsync(file.Url, TrackSearchMode.None);
+
+                if (track is null)
+                {
+                    await FollowupAsync("Lavalink could not load the attachment.").ConfigureAwait(false);
+                    return;
+                }
+
+                var position = await player.PlayAsync(track).ConfigureAwait(false);
+
+                await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
+                return;
+            }
+            else
+            {
+                _logger.LogWarning($"Attachment of non audio type: {file.ContentType}");
+                await FollowupAsync("Sorry, but your file is not a mp3, mp4, wav or a ogg.");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            throw;
+        }
+    }
     [SlashCommand("play-external", description: "A file link, icecast stream, etca", runMode: RunMode.Async)]
     public async Task PlayExternalAsync(string query)
     {
@@ -80,7 +121,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
                 return;
             }
             // I honestly don't really know how it's supposed to work, so I'll just put it here and hope for the best.
-            var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube);
+            var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.None);
 
             if (track is null)
             {
@@ -90,7 +131,7 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
 
             var position = await player.PlayAsync(track).ConfigureAwait(false);
 
-            await FollowupAsync($"Playing [external url]({track.Uri?.OriginalString}).").ConfigureAwait(false);
+            await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
             return;
         }
         catch (Exception ex)
@@ -155,13 +196,22 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
                 }
                 else
                 {
-                    await FollowupAsync("This does not seem to be a proper youtube url.").ConfigureAwait(false);
+                    await FollowupAsync("This does not seem to be a YouTube URL.").ConfigureAwait(false);
                     return;
                 }
             }
             catch (UriFormatException)
             {
-                await FollowupAsync("Invalid URL format provided.").ConfigureAwait(false);
+                var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube).ConfigureAwait(false);
+
+                if (track is null)
+                {
+                    await FollowupAsync("Lavalink could not find or load any YouTube tracks with your query.").ConfigureAwait(false);
+                    return;
+                }
+                var position = await player.PlayAsync(track).ConfigureAwait(false);
+
+                await FollowupAsync(embed: await Helpers.BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
                 return;
             }
         }
