@@ -17,7 +17,7 @@ namespace PPMusicBot.Services
         private readonly DiscordSocketClient _botClient;
         private readonly InteractionService _interactionService;
         private readonly IAudioService _audioService;
-        private readonly InactivityTrackingService _inactivityTrackingService;
+        private readonly IInactivityTrackingService _inactivityTrackingService;
         private readonly IServiceProvider _serviceProvider;
         private readonly MusicService _musicService;
 
@@ -28,7 +28,7 @@ namespace PPMusicBot.Services
             DiscordSocketClient botClient,
             InteractionService interactionService,
             IAudioService audioService,
-            InactivityTrackingService inactivityTrackingService,
+            IInactivityTrackingService inactivityTrackingService,
             MusicService musicService)
         {
             _configuration = configuration;

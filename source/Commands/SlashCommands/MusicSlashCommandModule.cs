@@ -637,10 +637,17 @@ public sealed class MusicSlashCommandModule : InteractionModuleBase<SocketIntera
         await HandleQueuePagination(-1);
     }
 
+
     [ComponentInteraction("queue_next")]
     public async Task HandleQueueNext()
     {
         await HandleQueuePagination(1);
+    }
+
+    [ComponentInteraction("queue_refresh")]
+    public async Task HandleQueueRefrsh()
+    {
+        await HandleQueuePagination(0);
     }
 
     private async Task HandleQueuePagination(int direction)

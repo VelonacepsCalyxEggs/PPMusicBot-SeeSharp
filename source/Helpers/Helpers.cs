@@ -126,6 +126,7 @@ namespace PPMusicBot.Helpers
 
             var components = new ComponentBuilder()
                 .WithButton("Previous", "queue_prev", disabled: page == 0)
+                .WithButton("Refresh", "queue_refresh")
                 .WithButton("Next", "queue_next", disabled: page >= totalPages - 1)
                 .Build();
 
