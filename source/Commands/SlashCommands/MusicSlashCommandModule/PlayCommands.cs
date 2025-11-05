@@ -1,7 +1,12 @@
-﻿using System.Text;
+﻿using System;
+using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
+using System.Text;
 using Discord;
 using Discord.Interactions;
+using Lavalink4NET.Extensions;
 using Lavalink4NET.Players.Vote;
+using Lavalink4NET.Rest;
 using Lavalink4NET.Rest.Entities.Tracks;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
@@ -11,7 +16,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
     public sealed partial class MusicSlashCommandModule
     {
 
-        [SlashCommand("play-attachment", description: "A file attachment, only mp3,mp4,wav,ogg", runMode: RunMode.Async)]
+        [SlashCommand("file", description: "Plays a file you attach, only mp3,mp4,wav,ogg", runMode: RunMode.Async)]
         public async Task PlayAttachment(Attachment file)
         {
             try
@@ -26,17 +31,17 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         await FollowupAsync("Failed to connect to voice channel.").ConfigureAwait(false);
                         return;
                     }
-                    var track = await _audioService.Tracks.LoadTrackAsync(file.Url, TrackSearchMode.None);
+                    var tracks = await _audioService.Tracks.LoadTracksAsync(file.Url, TrackSearchMode.None);
 
-                    if (track is null)
+                    if (tracks.Track is null)
                     {
                         await FollowupAsync("Lavalink could not load the attachment.").ConfigureAwait(false);
                         return;
                     }
 
-                    var position = await player.PlayAsync(track).ConfigureAwait(false);
+                    var position = await player.PlayAsync(tracks).ConfigureAwait(false);
 
-                    await FollowupAsync(embed: await BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
+                    await FollowupAsync(embed: await BuildPlayingEmbed(position, tracks, null, _artworkService)).ConfigureAwait(false);
                     return;
                 }
                 else
@@ -52,140 +57,70 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 throw;
             }
         }
-        [SlashCommand("play-external", description: "A file link, icecast stream, etc", runMode: RunMode.Async)]
-        public async Task PlayExternalAsync(string query)
-        {
-            try
-            {
-                await DeferAsync().ConfigureAwait(false);
-
-                var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
-
-                if (player is null)
-                {
-                    await FollowupAsync("Failed to connect to voice channel.").ConfigureAwait(false);
-                    return;
-                }
-                // I honestly don't really know how it's supposed to work, so I'll just put it here and hope for the best.
-                var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.None);
-
-                if (track is null)
-                {
-                    await FollowupAsync("Lavalink could not load the external track.").ConfigureAwait(false);
-                    return;
-                }
-
-                var position = await player.PlayAsync(track).ConfigureAwait(false);
-
-                await FollowupAsync(embed: await BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);
-                throw;
-            }
-        }
-        [SlashCommand("play-yt", description: "A test command for youtube music and such.", runMode: RunMode.Async)]
-        public async Task PlayYoutubeAsync(string query)
-        {
-            try
-            {
-                await DeferAsync().ConfigureAwait(false);
-
-                var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
-
-                if (player is null)
-                {
-                    await FollowupAsync("Failed to connect to voice channel.").ConfigureAwait(false);
-                    return;
-                }
-                try
-                {
-                    var uriFromQuery = new Uri(query);
-                    if (uriFromQuery.Host == "www.youtube.com" || uriFromQuery.Host == "youtu.be" || uriFromQuery.Host == "music.youtube.com")
-                    {
-                        if (uriFromQuery.Query.Contains("?list="))
-                        {
-                            var playlist = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.YouTube);
-
-                            if (playlist.Tracks.Length == 0 || !playlist.IsPlaylist)
-                            {
-                                await FollowupAsync("We thought the result was a playlist, but it's not or it's empty.").ConfigureAwait(false);
-                                return;
-                            }
-
-                            foreach (var track in playlist.Tracks)
-                            {
-                                await player.PlayAsync(track).ConfigureAwait(false);
-                            }
-
-                            await FollowupAsync($"Added {playlist.Tracks.Length} tracks from {playlist.Playlist?.Name}.").ConfigureAwait(false);
-                            return;
-                        }
-                        else
-                        {
-                            var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube);
-
-                            if (track is null)
-                            {
-                                await FollowupAsync("Lavalink could not load the youtube track.").ConfigureAwait(false);
-                                return;
-                            }
-
-                            var position = await player.PlayAsync(track).ConfigureAwait(false);
-
-                            await FollowupAsync(embed: await BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        await FollowupAsync("This does not seem to be a YouTube URL.").ConfigureAwait(false);
-                        return;
-                    }
-                }
-                catch (UriFormatException)
-                {
-                    var track = await _audioService.Tracks.LoadTrackAsync(query, TrackSearchMode.YouTube).ConfigureAwait(false);
-
-                    if (track is null)
-                    {
-                        await FollowupAsync("Lavalink could not find or load any YouTube tracks with your query.").ConfigureAwait(false);
-                        return;
-                    }
-                    var position = await player.PlayAsync(track).ConfigureAwait(false);
-
-                    await FollowupAsync(embed: await BuildPlayingEmbed(position, track, null, _artworkService)).ConfigureAwait(false);
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);
-                throw;
-            }
-        }
         /// <summary>
         ///     Plays music asynchronously.
         /// </summary>
         /// <param name="query">the search query</param>
         /// <returns>a task that represents the asynchronous operation</returns>
-        [SlashCommand("play", description: "Plays music", runMode: RunMode.Async)]
+        [SlashCommand("play", description: "Plays music, from everywhere.", runMode: RunMode.Async)]
         public async Task PlayAsync(string query)
         {
             try
             {
                 await DeferAsync().ConfigureAwait(false);
 
-                _musicService.SetTextChannelId(Context.Guild.Id, Context.Channel.Id); // Set interaction channel. (For error and service messages)
+                PlayQuery? playQuery = DetermineQueryType(query) switch
+                {
+                    PlayQueryType.None => null,
+                    PlayQueryType.Youtube => FormYoutubeQuery(query, new Uri(query)),
+                    PlayQueryType.YoutubeSearch => FormYoutubeQuery(query, null),
+                    PlayQueryType.External => FormExternalQuery(query, new Uri(query)),
+                    _ => throw new NotImplementedException()
+                };
+
+                if (playQuery == null)
+                {
+                    throw new ArgumentNullException(nameof(playQuery));
+                }
 
                 var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
 
                 if (player is null)
-                {
                     return;
+
+                var tracks = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, playQuery.SearchMode);
+
+                await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, tracks, null, _artworkService)).ConfigureAwait(false);
+                if (playQuery.IsPlaylist)
+                {
+                    foreach (var track in tracks.Tracks)
+                    {
+                        await player.PlayAsync(track);
+                    }
                 }
+                else
+                {
+                    await player.PlayAsync(tracks.Track!);
+                }
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"{ex.Message} {ex.StackTrace}");
+                throw;
+            }
+        }
+        [SlashCommand("fromdb", description: "Plays music from database only.", runMode: RunMode.Async)]
+        public async Task PlayFromDbAsync(string query)
+        {
+            try
+            {
+                await DeferAsync().ConfigureAwait(false);
+
+                var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
+
+                if (player is null)
+                    return;
 
                 var result = await _kenobiAPISearchEngineService.Search(query, Context.Interaction.Id).ConfigureAwait(false);
 
@@ -241,16 +176,11 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     await FollowupAsync(embed: embed, components: components).ConfigureAwait(false);
                     return;
                 }
-                // Uhh... subcommands... right... so, I already made a working embed creator for tracks, so it should work with pretty much anything now.
-                // I would need a file subcommand, a youtube subcommand and fromdb subcommand. (curretnly this is basically fromdb)
-
-                // After I make the suggestion display handler, I should make a separate subcommand for database, youtube and external tracks, fairly sure Lavalink
-                // Should handle those pretty well itself, we'll see though.
                 await PlayDatabaseTracks(player, result);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"{ex.Message} {ex.StackTrace}");
+                _logger.LogError(ex, ex.Message);
                 throw;
             }
         }
@@ -258,20 +188,20 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         {
             if (result.Tracks.Count > 0 && result.Albums.Count == 0)
             {
-                var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString, TrackSearchMode.None);
+                var tracks = await _audioService.Tracks.LoadTracksAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString, TrackSearchMode.None);
 
-                if (track is null)
+                if (tracks.Track is null)
                 {
                     await FollowupAsync("Lavalink could not load the track.");
                     return;
                 }
                 result.Tracks = [result.Tracks[wantedTrackIndex]];
-                var position = await player.PlayAsync(new CustomQueueTrackItem(track, result.Tracks[0])).ConfigureAwait(false);
+                var position = await player.PlayAsync(new CustomQueueTrackItem(tracks.Track, result.Tracks[0])).ConfigureAwait(false);
 
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(position, track, result, null)).ConfigureAwait(false);
+                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(position, tracks, result, null)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Embed = await BuildPlayingEmbed(position, track, result, null);
+                    msg.Embed = await BuildPlayingEmbed(position, tracks, result, null);
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
             }
@@ -318,12 +248,12 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             try
             {
                 await DeferAsync().ConfigureAwait(false);
-                if (!_kenobiAPISearchEngineService.SuggestionCache.ContainsKey(interactionId))
+                if (!_kenobiAPISearchEngineService.SuggestionCache.TryGetValue(interactionId, out (KenobiAPISearchResult Result, DateTime Timestamp) value))
                 {
                     await FollowupAsync("This suggestion menu has expired. Please try your search again.").ConfigureAwait(false);
                     return;
                 }
-                var result = _kenobiAPISearchEngineService.SuggestionCache[interactionId].Result;
+                var result = value.Result;
                 if (result == null)
                 {
                     await FollowupAsync("This suggestion menu has expired. Please try your search again.").ConfigureAwait(false);
@@ -364,6 +294,128 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             finally
             {
                 _kenobiAPISearchEngineService.SuggestionCache.Remove(interactionId);
+            }
+        }
+        private PlayQueryType DetermineQueryType(string query)
+        {
+            try
+            {
+                var uriFromQuery = new Uri(query);
+                if (uriFromQuery.Host == "www.youtube.com" || uriFromQuery.Host == "youtu.be" || uriFromQuery.Host == "music.youtube.com")
+                {
+                    return PlayQueryType.Youtube;
+                }
+                else
+                {
+                    return PlayQueryType.External;
+                }
+            }
+            catch (UriFormatException ex)
+            {
+                _logger.LogWarning("Could not form Uri from query, attempting to do a direct Youtube search.");
+                return PlayQueryType.YoutubeSearch;
+            }
+        }
+
+        private static PlayQuery FormYoutubeQuery(string query, Uri? uri)
+        {
+            if (uri != null)
+            {
+                if (uri.Query.Contains("?list="))
+                {
+                    return new PlayQuery()
+                    {
+                        Query = query,
+                        Uri = uri,
+                        SearchMode = TrackSearchMode.YouTube,
+                        IsLive = false,
+                        IsPlaylist = true,
+                        ModifyOriginalResponse = false,
+                    };
+                }
+                else 
+                {
+                    return new PlayQuery()
+                    {
+                        Query = query,
+                        Uri = uri,
+                        SearchMode = TrackSearchMode.YouTube,
+                        IsLive = false,
+                        IsPlaylist = false,
+                        ModifyOriginalResponse = false,
+                    };
+                }
+            }
+            else
+            {
+                return new PlayQuery()
+                {
+                    Query = query,
+                    Uri = null,
+                    SearchMode = TrackSearchMode.YouTube,
+                    IsLive = false,
+                    IsPlaylist = false,
+                    ModifyOriginalResponse = false,
+                };
+            }
+        }
+
+        private static PlayQuery FormExternalQuery(string query, Uri uri)
+        {
+            if (uri.Scheme == "icecast")
+            {
+                return new PlayQuery()
+                {
+                    Query = query,
+                    Uri = uri,
+                    SearchMode = TrackSearchMode.None,
+                    IsPlaylist = false,
+                    IsLive = true,
+                    ModifyOriginalResponse = false,
+                };
+            }
+            else
+            {
+                return new PlayQuery()
+                {
+                    Query = query,
+                    Uri = uri,
+                    SearchMode = TrackSearchMode.None,
+                    IsPlaylist = false,
+                    IsLive = true,
+                    ModifyOriginalResponse = false,
+                };
+            }
+        }
+
+        private enum PlayQueryType
+        {
+            None,
+            Youtube,
+            YoutubeSearch,
+            External
+        }
+
+        public record PlayQuery
+        {
+            public required string Query { get; init; }
+            public Uri? Uri { get; init; }
+            public TrackSearchMode SearchMode { get; init; }
+            public bool IsPlaylist { get; init; }
+            public bool IsLive {  get; init; }
+            public bool ModifyOriginalResponse { get; init; }
+            public PlayQuery(string query, Uri? uri, TrackSearchMode searchMode, bool isPlaylist, bool isLive, bool modifyOriginalResponse)
+            {
+                Query = query;
+                Uri = uri;
+                SearchMode = searchMode;
+                IsPlaylist = isPlaylist;
+                IsLive = isLive;
+                ModifyOriginalResponse = modifyOriginalResponse;
+            }
+
+            public PlayQuery()
+            {
             }
         }
     }

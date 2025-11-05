@@ -70,7 +70,7 @@ public sealed partial class MusicSlashCommandModule : InteractionModuleBase<Sock
             await FollowupAsync(errorMessage).ConfigureAwait(false);
             return null;
         }
-
+        _musicService.SetTextChannelId(Context.Guild.Id, Context.Channel.Id); // Set interaction channel. (For error and service messages)
         return result.Player;
     }
 }

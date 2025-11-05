@@ -2,6 +2,8 @@
 using Lavalink4NET.Artwork;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
+using Lavalink4NET.Rest.Entities.Server;
+using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
@@ -12,18 +14,46 @@ namespace PPMusicBot.Helpers
 {
     public static class Helpers
     {
-        public static async Task<Embed> BuildPlayingEmbed(int position, LavalinkTrack? track, KenobiAPISearchResult? result, ArtworkService? artworkService)
+        public static async Task<Embed> BuildPlayingEmbed(int position, TrackLoadResult? lavalinkResult, KenobiAPISearchResult? result, ArtworkService? artworkService)
         {
-            if (track is not null)
+            if (lavalinkResult is not null && !lavalinkResult.Value.IsPlaylist)
             {
-                return new EmbedBuilder()
+                var track = lavalinkResult.Value.Track;
+                if (track is not null)
                 {
-                    Title = position is 0 ? "Playing:" : "Added to queue:",
-                    Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].album.name)}**",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {(track.IsLiveStream == false ? track.Duration.ToString("hh\\:mm\\:ss") : '∞')} | Position: {position}" },
-                    ImageUrl = result is null ? ( await BuildImageUrlAsync(artworkService, track)) : Helpers.GetKenobiApiAlbumPreview(result.Tracks[0].album).OriginalString 
+                    return new EmbedBuilder()
+                    {
+                        Title = position is 0 ? "Playing:" : "Added to queue:",
+                        Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].album.name)}**",
+                        Footer = new EmbedFooterBuilder() { Text = $" Duration: {(track.IsLiveStream == false ? track.Duration.ToString("hh\\:mm\\:ss") : '∞')} | Position: {position}" },
+                        ImageUrl = result is null ? (await BuildImageUrlAsync(artworkService, track)) : Helpers.GetKenobiApiAlbumPreview(result.Tracks[0].album).OriginalString
 
-                }.Build();
+                    }.Build();
+                }
+                throw new ArgumentNullException(nameof(lavalinkResult.Value.Track));
+            }
+            else if (lavalinkResult is not null && lavalinkResult.Value.IsPlaylist)
+            {
+                if (lavalinkResult.Value.Tracks.Length > 0 && lavalinkResult.Value.Track is not null)
+                {
+                    TimeSpan totalPlaylistDuration = new TimeSpan();
+                    foreach (var item in lavalinkResult.Value.Tracks)
+                    {
+                        totalPlaylistDuration += item.Duration;
+                    }
+                    return new EmbedBuilder()
+                    {
+                        Title = position is 0 ? "Playing:" : "Added to queue:",
+                        Description = $"**{lavalinkResult.Value.Playlist.Name}** with {lavalinkResult.Value.Tracks.Length} tracks.",
+                        Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalPlaylistDuration:hh\\:mm\\:ss} | From position: {position} to {position + lavalinkResult.Value.Tracks.Length - 1}" },
+                        ImageUrl = await BuildImageUrlAsync(artworkService, lavalinkResult.Value.Track)
+
+                    }.Build();
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(lavalinkResult.Value.Track));
+                }
             }
             else if (result is not null && result.Albums.Count > 0)
             {
