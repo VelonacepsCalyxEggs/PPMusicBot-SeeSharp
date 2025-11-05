@@ -54,6 +54,7 @@ builder.Services.ConfigureInactivityTracking(config =>
 builder.Services.AddSingleton<ArtworkService>();
 builder.Services.AddSingleton<MusicService>();
 builder.Services.AddSingleton<KenobiAPISearchEngineService>();
+builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<BotService>();
 builder.Services.AddHostedService<BotWorker>();
 

@@ -11,7 +11,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule;
 ///     Presents some of the main features of the Lavalink4NET-Library.
 /// </summary>
 [RequireContext(ContextType.Guild)]
-[Group("music", "Music commands")]
+//[Group("music", "Music commands")]
 public sealed partial class MusicSlashCommandModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly IAudioService _audioService;
@@ -49,6 +49,7 @@ public sealed partial class MusicSlashCommandModule : InteractionModuleBase<Sock
     /// <returns>
     ///     a task that represents the asynchronous operation. The task result is the lavalink player.
     /// </returns>
+    /// 
     private async ValueTask<VoteLavalinkPlayer?> GetPlayerAsync(bool connectToVoiceChannel = true)
     {
         var retrieveOptions = new PlayerRetrieveOptions(

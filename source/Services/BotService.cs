@@ -20,6 +20,7 @@ namespace PPMusicBot.Services
         private readonly IInactivityTrackingService _inactivityTrackingService;
         private readonly IServiceProvider _serviceProvider;
         private readonly MusicService _musicService;
+        private readonly DatabaseService _databaseService;
 
         public BotService(
             ILogger<BotService> logger,
@@ -29,7 +30,8 @@ namespace PPMusicBot.Services
             InteractionService interactionService,
             IAudioService audioService,
             IInactivityTrackingService inactivityTrackingService,
-            MusicService musicService)
+            MusicService musicService,
+            DatabaseService databaseService)
         {
             _configuration = configuration;
             _logger = logger;
@@ -39,6 +41,7 @@ namespace PPMusicBot.Services
             _audioService = audioService;
             _inactivityTrackingService = inactivityTrackingService;
             _musicService = musicService;
+            _databaseService = databaseService;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -49,6 +52,7 @@ namespace PPMusicBot.Services
             }
 
             SetupEventHandlers();
+            await _databaseService.StartAsync(cancellationToken);
             await _botClient.LoginAsync(TokenType.Bot, _configuration["Bot:Token"]);
             await _botClient.StartAsync();
         }
@@ -92,6 +96,7 @@ namespace PPMusicBot.Services
         private async Task OnVoiceStateUpdated(object sender, Lavalink4NET.Clients.Events.VoiceStateUpdatedEventArgs eventArgs)
         {
             _logger.LogInformation($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
+            await _databaseService.WriteVoiceChannelData(eventArgs.UserId, eventArgs.OldVoiceState.VoiceChannelId, eventArgs.VoiceState.VoiceChannelId, eventArgs.GuildId, DateTime.Now);
             if (eventArgs.IsCurrentUser) return;
             var guild = _botClient.GetGuild(eventArgs.GuildId);
             if (guild == null) return;
@@ -161,9 +166,6 @@ namespace PPMusicBot.Services
 
             try
             {
-                await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
-                _logger.LogInformation($"Loaded {_interactionService.Modules.Count} modules with {_interactionService.SlashCommands.Count} slash commands");
-
                 await RegisterSlashCommands();
 
                 await _botClient.SetStatusAsync(UserStatus.Online);
@@ -222,17 +224,33 @@ namespace PPMusicBot.Services
         {
             try
             {
-                //await _interactionService.RegisterCommandsGloballyAsync(true);
-                //var globalCommands = await _botClient.Rest.GetGlobalApplicationCommands();
-                //foreach (var command in globalCommands)
-                //{
-                //    await command.DeleteAsync();
-                //}
+                await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
+                _logger.LogInformation($"Loading {_interactionService.Modules.Count} modules with {_interactionService.SlashCommands.Count} slash commands");
+
+                // Remove all existing modules first
+                foreach (var guild in _botClient.Guilds)
+                {
+                    await _interactionService.RemoveModulesFromGuildAsync(guild.Id);
+                }
+
+                // Log all loaded commands for debugging
+                foreach (var module in _interactionService.Modules)
+                {
+                    _logger.LogInformation($"Module: {module.Name}");
+                    foreach (var command in module.SlashCommands)
+                    {
+                        _logger.LogInformation($"  Slash Command: {command.Name}");
+                    }
+                    foreach (var command in module.ComponentCommands)
+                    {
+                        _logger.LogInformation($"  Component Command: {command.Name}");
+                    }
+                }
 
                 foreach (var guild in _botClient.Guilds)
                 {
                     _logger.LogInformation($"Registering commands for guild: {guild.Name}");
-                     await _interactionService.RegisterCommandsToGuildAsync(guild.Id);
+                    await _interactionService.RegisterCommandsToGuildAsync(guild.Id);
                 }
             }
             catch (Exception ex)

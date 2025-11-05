@@ -21,7 +21,8 @@
     <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.0.27" />
     <PackageReference Include="Lavalink4NET.Protocol" Version="4.0.27" />
     <PackageReference Include="Lavalink4NET.Rest" Version="4.0.27" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageReference Include="Npgsql" Version="9.0.4" />
   </ItemGroup>
 
   <ItemGroup>
