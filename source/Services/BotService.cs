@@ -7,6 +7,7 @@ using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
 using System.Reflection;
+using System.Text;
 
 namespace PPMusicBot.Services
 {
@@ -106,9 +107,7 @@ namespace PPMusicBot.Services
             if (botVoiceChannel == null) return;
             var affectedChannelId = eventArgs.OldVoiceState.VoiceChannelId ?? eventArgs.VoiceState.VoiceChannelId;
             if (!(botVoiceChannel.Id == affectedChannelId)) return;
-            var nonBotUsers = botVoiceChannel.Users.Count(u => !u.IsBot && u.Id != eventArgs.UserId);
-            _logger.LogInformation(nonBotUsers.ToString());
-            if (nonBotUsers == 0)
+            if (botVoiceChannel.Users.Count == 1)
             {
                 ulong? interactionChannelId = _musicService.GetTextChannelId(guild.Id);
                 if (interactionChannelId != null) {
@@ -236,15 +235,17 @@ namespace PPMusicBot.Services
                 // Log all loaded commands for debugging
                 foreach (var module in _interactionService.Modules)
                 {
-                    _logger.LogInformation($"Module: {module.Name}");
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine($"Module: {module.Name}");
                     foreach (var command in module.SlashCommands)
                     {
-                        _logger.LogInformation($"  Slash Command: {command.Name}");
+                        sb.AppendLine($"Slash Command: {command.Name}");
                     }
                     foreach (var command in module.ComponentCommands)
                     {
-                        _logger.LogInformation($"  Component Command: {command.Name}");
+                        sb.AppendLine($"Component Command: {command.Name}");
                     }
+                    _logger.LogInformation(sb.ToString());
                 }
 
                 foreach (var guild in _botClient.Guilds)

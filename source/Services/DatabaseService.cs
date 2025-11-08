@@ -9,8 +9,8 @@ namespace PPMusicBot.Services
         private readonly IConfiguration _configuration = configuration;
         private readonly ILogger<DatabaseService> _logger = logger;
         private NpgsqlDataSource DataSource;
-        private int _timeout = 5000; // In Ms
-        private int _retryCount = 0;
+        private TimeSpan _timeout = new(0,0,0,0,5000); // In Ms
+        private double _retryCount = 0;
         private const int MaxRetries = 5;
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -51,6 +51,7 @@ namespace PPMusicBot.Services
             {
                 if (_retryCount > 0)
                 {
+                    _timeout = TimeSpan.FromMilliseconds(_timeout.TotalMilliseconds * Math.Pow(2, _retryCount));
                     await Task.Delay(_timeout);
                 }
                 DataSource?.Dispose();
@@ -59,7 +60,7 @@ namespace PPMusicBot.Services
                 if (_retryCount > 0)
                 {
                     _retryCount = 0;
-                    _timeout = 5;
+                    _timeout = new(0, 0, 0, 0, 5000);
                 }
             }
             catch
@@ -69,7 +70,6 @@ namespace PPMusicBot.Services
                     throw;
                 }
                 _retryCount++;
-                _timeout = _timeout * 2;
                 _logger.LogError($"Could not create a datasource for the database, retry count: {_retryCount}, timeout: {_timeout}");
                 await CreateConnection();
             }

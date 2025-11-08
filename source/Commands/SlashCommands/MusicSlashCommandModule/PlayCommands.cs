@@ -90,6 +90,12 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 
                 var tracks = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, playQuery.SearchMode);
 
+                if (!tracks.HasMatches)
+                {
+                    await FollowupAsync("We could not find any tracks that fit the criteria.");
+                    return;
+                }
+
                 await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, tracks, null, _artworkService)).ConfigureAwait(false);
                 if (playQuery.IsPlaylist)
                 {
