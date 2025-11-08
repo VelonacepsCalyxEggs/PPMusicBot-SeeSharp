@@ -1,25 +1,17 @@
-﻿using Discord;
-using Npgsql;
+﻿using Npgsql;
 using NpgsqlTypes;
-using System;
-using System.Collections.Generic;
 using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PPMusicBot.Services
 {
-    public class DatabaseService
+    public class DatabaseService(IConfiguration configuration, ILogger<DatabaseService> logger)
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<DatabaseService> _logger;
+        private readonly IConfiguration _configuration = configuration;
+        private readonly ILogger<DatabaseService> _logger = logger;
         private NpgsqlDataSource DataSource;
-        public DatabaseService(IConfiguration configuration, ILogger<DatabaseService> logger)
-        {
-            _configuration = configuration;
-            _logger = logger;
-        }
+        private int _timeout = 5000; // In Ms
+        private int _retryCount = 0;
+        private const int MaxRetries = 5;
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -29,7 +21,7 @@ namespace PPMusicBot.Services
             }
             try
             {
-                CreateConnection();
+                await CreateConnection(isInitial: true);
                 return;
             }
             catch
@@ -48,13 +40,42 @@ namespace PPMusicBot.Services
             await DataSource.DisposeAsync();
             return;
         }
-        private void CreateConnection()
+        private async Task CreateConnection(bool isInitial = false)
         {
-            DataSource?.Dispose();
-            DataSource = NpgsqlDataSource.Create(_configuration["Database:ConnectionString"]);
-            using var conn = DataSource.OpenConnection();
+            if (_retryCount > MaxRetries)
+            {
+                _logger.LogCritical($"Could not connect to the database after {MaxRetries} retries...");
+                throw new Exception($"Could not connect to the database after {MaxRetries} retries...");
+            }
+            try
+            {
+                if (_retryCount > 0)
+                {
+                    await Task.Delay(_timeout);
+                }
+                DataSource?.Dispose();
+                DataSource = NpgsqlDataSource.Create(_configuration["Database:ConnectionString"]);
+                using var conn = DataSource.OpenConnection();
+                if (_retryCount > 0)
+                {
+                    _retryCount = 0;
+                    _timeout = 5;
+                }
+            }
+            catch
+            {
+                if (isInitial)
+                {
+                    throw;
+                }
+                _retryCount++;
+                _timeout = _timeout * 2;
+                _logger.LogError($"Could not create a datasource for the database, retry count: {_retryCount}, timeout: {_timeout}");
+                await CreateConnection();
+            }
         }
-
+        // Possibly make it so the data about discord data joins is stored in a list, and when it reaches a certain threshhold we batch insert and clear it.
+        // This would optimize requests a bit, but also probably help with connection management as well.
         public async Task WriteVoiceChannelData(ulong userId, ulong? oldChannelId, ulong? newChannelId, ulong guildId, DateTime eventTimestamp)
         {
             try
@@ -72,11 +93,13 @@ namespace PPMusicBot.Services
                 cmd.Parameters.AddWithValue(NpgsqlDbType.Timestamp, eventTimestamp);
 
                 await cmd.ExecuteNonQueryAsync();
+                await conn.CloseAsync();
+                await conn.DisposeAsync();
             }
             catch (DbException ex)
             {
                 _logger.LogError(ex, ex.Message);
-                CreateConnection(); // This is scuffed but I am too sleepy to figure out the correct exception types for proper handling.
+                await CreateConnection();
             }
         }
     }
