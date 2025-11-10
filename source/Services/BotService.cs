@@ -107,7 +107,13 @@ namespace PPMusicBot.Services
             if (botVoiceChannel == null) return;
             var affectedChannelId = eventArgs.OldVoiceState.VoiceChannelId ?? eventArgs.VoiceState.VoiceChannelId;
             if (!(botVoiceChannel.Id == affectedChannelId)) return;
-            if (botVoiceChannel.Users.Count == 1)
+            var userCount = botVoiceChannel.Users.Count();
+            if (eventArgs.OldVoiceState.VoiceChannelId == player.VoiceChannelId)
+            {
+                userCount--;
+            }
+            _logger.LogInformation($"{userCount}");
+            if (userCount <= 1)
             {
                 ulong? interactionChannelId = _musicService.GetTextChannelId(guild.Id);
                 if (interactionChannelId != null) {
@@ -115,8 +121,8 @@ namespace PPMusicBot.Services
                     if (interactionChannel != null)
                         await interactionChannel.SendMessageAsync("Everyone left the channel.");
                 }
-                await player.StopAsync();
                 await player.DisconnectAsync();
+                await player.StopAsync();
             }
             return;
         }
@@ -125,7 +131,7 @@ namespace PPMusicBot.Services
         {
             _logger.LogInformation("Track Ended.");
             VoteLavalinkPlayer player = (VoteLavalinkPlayer)eventArgs.Player;
-            if (player.Queue.Count == 0 && player.CurrentItem == null)
+            if (player.Queue.Count == 0 && player.CurrentItem == null && player.ConnectionState.IsConnected)
             {
                 var guild = _botClient.GetGuild(eventArgs.Player.GuildId);
                 if (guild != null)
