@@ -97,7 +97,7 @@ namespace PPMusicBot.Services
         private async Task OnVoiceStateUpdated(object sender, Lavalink4NET.Clients.Events.VoiceStateUpdatedEventArgs eventArgs)
         {
             _logger.LogInformation($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
-            await _databaseService.WriteVoiceChannelData(eventArgs.UserId, eventArgs.OldVoiceState.VoiceChannelId, eventArgs.VoiceState.VoiceChannelId, eventArgs.GuildId, DateTime.Now);
+            _databaseService.RecordVoiceChannelData(eventArgs.UserId, eventArgs.OldVoiceState.VoiceChannelId, eventArgs.VoiceState.VoiceChannelId, eventArgs.GuildId, DateTime.Now);
             if (eventArgs.IsCurrentUser) return;
             var guild = _botClient.GetGuild(eventArgs.GuildId);
             if (guild == null) return;
@@ -232,7 +232,6 @@ namespace PPMusicBot.Services
                 await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
                 _logger.LogInformation($"Loading {_interactionService.Modules.Count} modules with {_interactionService.SlashCommands.Count} slash commands");
 
-                // Remove all existing modules first
                 foreach (var guild in _botClient.Guilds)
                 {
                     await _interactionService.RemoveModulesFromGuildAsync(guild.Id);

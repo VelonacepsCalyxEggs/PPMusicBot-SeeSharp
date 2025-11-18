@@ -7,7 +7,10 @@ using System.Threading.Tasks;
 
 namespace PPMusicBot.Services
 {
-    // Mostly used to store context.
+    /// <summary>
+    ///     Mostly used to store context for the player.
+    ///     Will probably get expanded later.
+    /// </summary>
     public class MusicService
     {
         private readonly ConcurrentDictionary<ulong, ulong> _guildTextChannels = new();

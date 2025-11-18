@@ -1,12 +1,8 @@
-﻿using System;
-using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
+﻿using System.Text;
 using Discord;
 using Discord.Interactions;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.Players.Vote;
-using Lavalink4NET.Rest;
 using Lavalink4NET.Rest.Entities.Tracks;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
@@ -69,6 +65,11 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             {
                 await DeferAsync().ConfigureAwait(false);
 
+                var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
+
+                if (player is null)
+                    return;
+
                 PlayQuery? playQuery = DetermineQueryType(query) switch
                 {
                     PlayQueryType.None => null,
@@ -82,11 +83,6 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 {
                     throw new ArgumentNullException(nameof(playQuery));
                 }
-
-                var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
-
-                if (player is null)
-                    return;
 
                 var tracks = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, playQuery.SearchMode);
 

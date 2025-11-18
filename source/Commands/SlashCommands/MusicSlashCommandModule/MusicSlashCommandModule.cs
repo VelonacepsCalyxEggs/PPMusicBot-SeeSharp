@@ -8,10 +8,9 @@ using Lavalink4NET;
 
 namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule;
 /// <summary>
-///     Presents some of the main features of the Lavalink4NET-Library.
+///     The module that contains all the Music related commands, and queue management features.
 /// </summary>
 [RequireContext(ContextType.Guild)]
-//[Group("music", "Music commands")]
 public sealed partial class MusicSlashCommandModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly IAudioService _audioService;
@@ -21,7 +20,7 @@ public sealed partial class MusicSlashCommandModule : InteractionModuleBase<Sock
 
     private readonly KenobiAPISearchEngineService _kenobiAPISearchEngineService;
     /// <summary>
-    ///     Initializes a new instance of the <see cref="MusicModule"/> class.
+    ///     Initializes a new instance of the <see cref="MusicSlashCommandModule"/> class.
     /// </summary>
     /// <param name="audioService">the audio service</param>
     /// <exception cref="ArgumentNullException">
