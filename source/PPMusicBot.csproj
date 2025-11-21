@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-ASimpleDiscordBotArchitectureTest-81dc0436-d847-43ba-8e72-6724bd13f103</UserSecretsId>
@@ -14,18 +14,18 @@
     <PackageReference Include="Discord.Net.Rest" Version="3.18.0" />
     <PackageReference Include="Discord.Net.Webhook" Version="3.18.0" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.18.0" />
-    <PackageReference Include="Lavalink4NET" Version="4.0.27" />
-    <PackageReference Include="Lavalink4NET.Abstractions" Version="4.0.27" />
-    <PackageReference Include="Lavalink4NET.Artwork" Version="4.0.27" />
-    <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.27" />
-    <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.0.27" />
-    <PackageReference Include="Lavalink4NET.Protocol" Version="4.0.27" />
-    <PackageReference Include="Lavalink4NET.Rest" Version="4.0.27" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageReference Include="Lavalink4NET" Version="4.1.0" />
+    <PackageReference Include="Lavalink4NET.Abstractions" Version="4.1.0" />
+    <PackageReference Include="Lavalink4NET.Artwork" Version="4.1.0" />
+    <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.1.0" />
+    <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.1.0" />
+    <PackageReference Include="Lavalink4NET.Protocol" Version="4.1.0" />
+    <PackageReference Include="Lavalink4NET.Rest" Version="4.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Npgsql" Version="9.0.4" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Services\Lavalink\" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
 </Project>

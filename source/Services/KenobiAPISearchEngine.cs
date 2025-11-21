@@ -1,20 +1,7 @@
 ﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
 using System.Text;
-using System.Threading.Tasks;
 using PPMusicBot.Models;
-using System.Diagnostics;
 using Newtonsoft.Json.Serialization;
-using Lavalink4NET.Tracks;
-using Lavalink4NET.Rest.Entities.Tracks;
-using Lavalink4NET;
-using System.Collections.Immutable;
-using System.Text.Json;
-using System.Diagnostics.Eventing.Reader;
-using Microsoft.Extensions.Options;
 
 namespace PPMusicBot.Services
 {
@@ -124,8 +111,6 @@ namespace PPMusicBot.Services
 
                 if (resultState == true)
                 {
-
-                    // This should be a separate function.
                     var parsedData = await RequestAlbumSongsAsync(searchResults.albums[0].id);
                     searchResults.albums[..1][0].Music = parsedData;
                     return new KenobiAPISearchResult([], searchResults.albums[..1]);

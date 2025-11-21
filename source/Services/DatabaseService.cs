@@ -1,9 +1,6 @@
 ﻿using Npgsql;
 using NpgsqlTypes;
-using System.Collections.ObjectModel;
 using System.Data.Common;
-using static PPMusicBot.Models.KenobiAPIModels;
-
 namespace PPMusicBot.Services
 {
     public class DatabaseService(IConfiguration configuration, ILogger<DatabaseService> logger)
@@ -40,6 +37,10 @@ namespace PPMusicBot.Services
             {
                 _logger.LogInformation("Initiating Bot Service graceful shutdown...");
             }
+            if (voiceChannelDatas.Count > 0)
+            {
+                await WriteVoiceChannelData();
+            }
             await DataSource.DisposeAsync();
             return;
         }
@@ -47,7 +48,6 @@ namespace PPMusicBot.Services
         {
             if (_retryCount > MaxRetries)
             {
-                _logger.LogCritical($"Could not connect to the database after {MaxRetries} retries...");
                 throw new Exception($"Could not connect to the database after {MaxRetries} retries...");
             }
             try
@@ -125,12 +125,12 @@ namespace PPMusicBot.Services
             }
         }
     }
-}
-public readonly record struct VoiceChannelData
-{
-    public ulong UserId { get; init; }
-    public ulong? OldChannelId { get; init; }
-    public ulong? NewChannelId { get; init; }
-    public ulong GuildId { get; init; }
-    public DateTime EventTimeStamp { get; init; }
+    public readonly record struct VoiceChannelData
+    {
+        public ulong UserId { get; init; }
+        public ulong? OldChannelId { get; init; }
+        public ulong? NewChannelId { get; init; }
+        public ulong GuildId { get; init; }
+        public DateTime EventTimeStamp { get; init; }
+    }
 }

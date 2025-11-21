@@ -83,9 +83,16 @@ namespace PPMusicBot.Services
             _inactivityTrackingService.PlayerInactive += OnPlayerInactive;
         }
 
-        private Task OnPlayerInactive(object sender, Lavalink4NET.InactivityTracking.Events.PlayerInactiveEventArgs eventArgs)
+        private async Task OnPlayerInactive(object sender, Lavalink4NET.InactivityTracking.Events.PlayerInactiveEventArgs eventArgs)
         {
-            return Task.CompletedTask;
+            ulong? interactionChannelId = _musicService.GetTextChannelId(eventArgs.Player.GuildId);
+            if (interactionChannelId != null)
+            {
+                var guild = _botClient.GetGuild(eventArgs.Player.GuildId);
+                var interactionChannel = guild.GetTextChannel((ulong)interactionChannelId);
+                if (interactionChannel != null)
+                    await interactionChannel.SendMessageAsync("The player left due to inactivity.");
+            }
         }
 
         private Task OnVoiceServerUpdated(object sender, Lavalink4NET.Clients.Events.VoiceServerUpdatedEventArgs eventArgs)
@@ -97,7 +104,7 @@ namespace PPMusicBot.Services
         private async Task OnVoiceStateUpdated(object sender, Lavalink4NET.Clients.Events.VoiceStateUpdatedEventArgs eventArgs)
         {
             _logger.LogInformation($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
-            _databaseService.RecordVoiceChannelData(eventArgs.UserId, eventArgs.OldVoiceState.VoiceChannelId, eventArgs.VoiceState.VoiceChannelId, eventArgs.GuildId, DateTime.Now);
+            await _databaseService.RecordVoiceChannelData(eventArgs.UserId, eventArgs.OldVoiceState.VoiceChannelId, eventArgs.VoiceState.VoiceChannelId, eventArgs.GuildId, DateTime.Now);
             if (eventArgs.IsCurrentUser) return;
             var guild = _botClient.GetGuild(eventArgs.GuildId);
             if (guild == null) return;
@@ -147,20 +154,21 @@ namespace PPMusicBot.Services
             }
             return Task.CompletedTask;
         }
-
-        private  Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
+        // This needs proper handling.
+        private Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
         {
             _logger.LogError($"Track Exeption: {eventArgs.Exception.Cause}: {eventArgs.Exception.Message} \n Track: {eventArgs.Track.Title}");
             //VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
             //await pl.SkipAsync()
             return Task.CompletedTask;
         }
-
-        private async Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)
+        // Never had this happen before, needs testing.
+        private Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)
         {
             _logger.LogWarning("Track stuck.");
-            VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
-            await pl.SkipAsync();
+            //VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
+            //await pl.SkipAsync();
+            return Task.CompletedTask;
         }
 
         private async Task OnReady()
@@ -229,6 +237,8 @@ namespace PPMusicBot.Services
         {
             try
             {
+                // I need to later implement the command caching so I don't re-register the same commands if they didn't change.
+                // I might want to research if it actually happens in this environment.
                 await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
                 _logger.LogInformation($"Loading {_interactionService.Modules.Count} modules with {_interactionService.SlashCommands.Count} slash commands");
 

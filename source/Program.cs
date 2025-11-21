@@ -1,15 +1,28 @@
-using PPMusicBot.Services;
-using PPMusicBot;
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Discord;
-using Lavalink4NET.Extensions;
-using Lavalink4NET.Artwork;
 using Lavalink4NET;
-using Lavalink4NET.InactivityTracking.Extensions;
+using Lavalink4NET.Artwork;
+using Lavalink4NET.Extensions;
 using Lavalink4NET.InactivityTracking;
+using Lavalink4NET.InactivityTracking.Extensions;
+using PPMusicBot;
+using PPMusicBot.Services;
+using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+var loggerConfiguration = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.File(
+        path: "logs/ppmusicbot-.txt",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        shared: true)
+    .WriteTo.Console();
+
+Log.Logger = loggerConfiguration.CreateLogger();
+builder.Services.AddSerilog();
 
 builder.Services.AddSingleton<DiscordSocketClient>(provider =>
 {
