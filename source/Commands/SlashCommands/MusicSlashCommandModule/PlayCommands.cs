@@ -12,7 +12,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
     public sealed partial class MusicSlashCommandModule
     {
 
-        [SlashCommand("file", description: "Plays a file you attach, only mp3,mp4,wav,ogg", runMode: RunMode.Async)]
+        [SlashCommand("file", description: "Plays a file you attach, only mp3,mp4,wav,oggs", runMode: RunMode.Async)]
         public async Task PlayAttachment(Attachment file)
         {
             try

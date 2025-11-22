@@ -11,11 +11,11 @@ using PPMusicBot.Services;
 using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
-
+var logsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PPMusicBot", "logs/ppmusicbot-.txt");
 var loggerConfiguration = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .WriteTo.File(
-        path: "logs/ppmusicbot-.txt",
+        path: logsPath,
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         shared: true)

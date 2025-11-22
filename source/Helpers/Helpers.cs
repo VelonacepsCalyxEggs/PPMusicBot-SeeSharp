@@ -187,5 +187,12 @@ namespace PPMusicBot.Helpers
             var artworkUri = await artworkService.ResolveAsync(track);
             return (artworkUri != null ? artworkUri.OriginalString : String.Empty);
         }
+
+        public static string GetCachePath()
+        {
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string appName = "PPMusicBot";
+            return Path.Combine(appData, appName, "cache");
+        }
     }
 }

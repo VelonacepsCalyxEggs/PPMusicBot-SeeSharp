@@ -6,8 +6,10 @@ using Lavalink4NET.Events.Players;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
+using Newtonsoft.Json;
 using System.Reflection;
 using System.Text;
+using static PPMusicBot.Helpers.Helpers;
 
 namespace PPMusicBot.Services
 {
@@ -106,10 +108,10 @@ namespace PPMusicBot.Services
             _logger.LogInformation($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
             await _databaseService.RecordVoiceChannelData(eventArgs.UserId, eventArgs.OldVoiceState.VoiceChannelId, eventArgs.VoiceState.VoiceChannelId, eventArgs.GuildId, DateTime.Now);
             if (eventArgs.IsCurrentUser) return;
+            var player = await _audioService.Players.GetPlayerAsync<LavalinkPlayer>(eventArgs.GuildId);
+            if (player == null) return;
             var guild = _botClient.GetGuild(eventArgs.GuildId);
             if (guild == null) return;
-            var player = await _audioService.Players.GetPlayerAsync<LavalinkPlayer>(guild.Id);
-            if (player == null) return;
             var botVoiceChannel = guild.GetVoiceChannel(player.VoiceChannelId);
             if (botVoiceChannel == null) return;
             var affectedChannelId = eventArgs.OldVoiceState.VoiceChannelId ?? eventArgs.VoiceState.VoiceChannelId;
@@ -119,7 +121,7 @@ namespace PPMusicBot.Services
             {
                 userCount--;
             }
-            _logger.LogInformation($"{userCount}");
+            _logger.LogWarning($"Bot Voice Channel: {botVoiceChannel.Id}, Users: {userCount}");
             if (userCount <= 1)
             {
                 ulong? interactionChannelId = _musicService.GetTextChannelId(guild.Id);
@@ -129,7 +131,6 @@ namespace PPMusicBot.Services
                         await interactionChannel.SendMessageAsync("Everyone left the channel.");
                 }
                 await player.DisconnectAsync();
-                await player.StopAsync();
             }
             return;
         }
@@ -170,7 +171,6 @@ namespace PPMusicBot.Services
             //await pl.SkipAsync();
             return Task.CompletedTask;
         }
-
         private async Task OnReady()
         {
             _logger.LogInformation("Bot is ready!");
@@ -237,42 +237,86 @@ namespace PPMusicBot.Services
         {
             try
             {
-                // I need to later implement the command caching so I don't re-register the same commands if they didn't change.
-                // I might want to research if it actually happens in this environment.
                 await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
                 _logger.LogInformation($"Loading {_interactionService.Modules.Count} modules with {_interactionService.SlashCommands.Count} slash commands");
 
-                foreach (var guild in _botClient.Guilds)
+                if (!CompareRegisteredCommands(_interactionService.Modules))
                 {
-                    await _interactionService.RemoveModulesFromGuildAsync(guild.Id);
-                }
-
-                // Log all loaded commands for debugging
-                foreach (var module in _interactionService.Modules)
-                {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine($"Module: {module.Name}");
-                    foreach (var command in module.SlashCommands)
+                    _logger.LogInformation("Commands changed, re-registering.");
+                    foreach (var guild in _botClient.Guilds)
                     {
-                        sb.AppendLine($"Slash Command: {command.Name}");
+                        await _interactionService.RemoveModulesFromGuildAsync(guild.Id);
                     }
-                    foreach (var command in module.ComponentCommands)
-                    {
-                        sb.AppendLine($"Component Command: {command.Name}");
-                    }
-                    _logger.LogInformation(sb.ToString());
-                }
 
-                foreach (var guild in _botClient.Guilds)
+                    // Log all loaded commands for debugging
+                    foreach (var module in _interactionService.Modules)
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendLine($"Module: {module.Name}");
+                        foreach (var command in module.SlashCommands)
+                        {
+                            sb.AppendLine($"Slash Command: {command.Name}");
+                        }
+                        foreach (var command in module.ComponentCommands)
+                        {
+                            sb.AppendLine($"Component Command: {command.Name}");
+                        }
+                        _logger.LogInformation(sb.ToString());
+                    }
+                    foreach (var guild in _botClient.Guilds)
+                    {
+                        _logger.LogInformation($"Registering commands for guild: {guild.Name}");
+                        await _interactionService.RegisterCommandsToGuildAsync(guild.Id);
+                    }
+                    await WriteRegisteredCommands(_interactionService.Modules);
+                }
+                else
                 {
-                    _logger.LogInformation($"Registering commands for guild: {guild.Name}");
-                    await _interactionService.RegisterCommandsToGuildAsync(guild.Id);
+                    _logger.LogInformation("No commands were changed since last restart.");
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error registering commands");
             }
+        }
+
+        private static async Task WriteRegisteredCommands(IReadOnlyList<ModuleInfo> modules)
+        {
+            string path = GetCachePath();
+            var cache = new ModuleCache() { Modules = modules };
+            var settings = new JsonSerializerSettings
+            {
+                Formatting = Formatting.Indented,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                NullValueHandling = NullValueHandling.Ignore,
+            };
+            var json = JsonConvert.SerializeObject(cache,settings);
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+            await File.WriteAllTextAsync(Path.Combine(path, "modulecache.json"), json);
+        }
+
+        private static bool CompareRegisteredCommands(IReadOnlyList<ModuleInfo> newCommands)
+        {
+            string path = GetCachePath();
+            if (!Directory.Exists(path) || !File.Exists(Path.Combine(path, "modulecache.json")))
+                return false;
+            var cache = new ModuleCache() { Modules = newCommands };
+            var settings = new JsonSerializerSettings
+            {
+                Formatting = Formatting.Indented,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                NullValueHandling = NullValueHandling.Ignore,
+            };
+            var newJson = JsonConvert.SerializeObject(cache, settings);
+            var oldJson = File.ReadAllText(Path.Combine(path, "modulecache.json"));
+
+            if (String.Equals(newJson, oldJson))
+            {
+                return true;
+            }
+            return false;
         }
 
         private Task LogWrapper(LogMessage msg)
@@ -290,6 +334,12 @@ namespace PPMusicBot.Services
 
             _logger.Log(logLevel, msg.Exception, msg.Message);
             return Task.CompletedTask;
+        }
+
+        public class ModuleCache
+        {
+            public required IReadOnlyList<ModuleInfo> Modules { get; init; }
+            readonly DateTime LastUpdated = DateTime.Now;
         }
     }
 }
