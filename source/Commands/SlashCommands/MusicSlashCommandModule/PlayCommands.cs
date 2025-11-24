@@ -4,6 +4,7 @@ using Discord.Interactions;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Rest.Entities.Tracks;
+using Lavalink4NET.Tracks;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
 using static PPMusicBot.Helpers.Helpers;
@@ -59,7 +60,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         /// <param name="query">the search query</param>
         /// <returns>a task that represents the asynchronous operation</returns>
         [SlashCommand("play", description: "Plays music, from everywhere.", runMode: RunMode.Async)]
-        public async Task PlayAsync(string query)
+        public async Task PlayAsync(string query, bool shuffle = false)
         {
             try
             {
@@ -84,25 +85,31 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     throw new ArgumentNullException(nameof(playQuery));
                 }
 
-                var tracks = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, playQuery.SearchMode);
+                var result = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, playQuery.SearchMode);
 
-                if (!tracks.HasMatches)
+                if (!result.HasMatches)
                 {
                     await FollowupAsync("We could not find any tracks that fit the criteria.");
                     return;
                 }
+                IEnumerable<LavalinkTrack>? shuffledTracks = null;
+                if (shuffle)
+                {
+                    shuffledTracks = result.Tracks.Shuffle();
+                }
 
-                await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, tracks, null, _artworkService)).ConfigureAwait(false);
+                
+                await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, result, null, _artworkService)).ConfigureAwait(false);
                 if (playQuery.IsPlaylist)
                 {
-                    foreach (var track in tracks.Tracks)
+                    foreach (var track in shuffledTracks ?? result.Tracks)
                     {
                         await player.PlayAsync(track);
                     }
                 }
                 else
                 {
-                    await player.PlayAsync(tracks.Track!);
+                    await player.PlayAsync(result.Track!);
                 }
                 return;
             }

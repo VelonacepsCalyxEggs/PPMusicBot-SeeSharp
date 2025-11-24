@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Lavalink4NET.Players;
+using PPMusicBot.Classes;
 using static PPMusicBot.Helpers.Helpers;
 namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 {
@@ -90,15 +91,22 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             }
 
             await player.SkipAsync().ConfigureAwait(false);
-
-            var track = player.CurrentItem;
-
-            if (track is not null)
+            var currentItem = player.CurrentItem;
+            if (currentItem is not null)
             {
+                string description = string.Empty;
+                if (player.TryGetCustomData(out var data) && data is not null)
+                {
+                    description = $"Now Playing: {data.MusicTrack.title}";
+                }
+                else
+                {
+                    description = $"Now Playing: {player.CurrentTrack?.Title}";
+                }
                 var embed = new EmbedBuilder()
                 {
                     Title = "Skipped.",
-                    Description = $"Now Playing: {track.Reference.Track?.Title}"
+                    Description = description
                 }.Build();
                 await RespondAsync(embed: embed).ConfigureAwait(false);
             }

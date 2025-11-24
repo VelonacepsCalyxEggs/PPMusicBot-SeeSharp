@@ -208,16 +208,20 @@ namespace PPMusicBot.Services
                 {
                     case InteractionCommandError.UnmetPrecondition:
                         if (!context.Interaction.HasResponded)
-                            await context.Interaction.RespondAsync($"Unmet precondition: {result.ErrorReason}", ephemeral: true);
+                            await context.Interaction.RespondAsync($"Unmet precondition: {result.ErrorReason}", ephemeral: true)
+                                .ConfigureAwait(false);
                         break;
                     case InteractionCommandError.Exception:
                         if (!context.Interaction.HasResponded)
-                            await context.Interaction.RespondAsync($"An exception occurred: {result.ErrorReason}", ephemeral: true);
-                        else await context.Interaction.FollowupAsync($"An error occurred: {result.ErrorReason}", ephemeral: true);
+                            await context.Interaction.RespondAsync($"An exception occurred: {result.ErrorReason}", ephemeral: true)
+                                .ConfigureAwait(false);
+                        else await context.Interaction.FollowupAsync($"An error occurred: {result.ErrorReason}", ephemeral: true)
+                                .ConfigureAwait(false);
                         break;
                     default:
                         if (!context.Interaction.HasResponded)
-                            await context.Interaction.RespondAsync($"An error occurred: {result.ErrorReason}", ephemeral: true);
+                            await context.Interaction.RespondAsync($"An error occurred: {result.ErrorReason}", ephemeral: true)
+                                .ConfigureAwait(false);
                         break;
                 }
             }
