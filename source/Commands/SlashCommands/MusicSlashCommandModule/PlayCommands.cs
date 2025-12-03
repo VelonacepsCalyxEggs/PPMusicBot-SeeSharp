@@ -85,11 +85,19 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     throw new ArgumentNullException(nameof(playQuery));
                 }
 
-                var result = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, playQuery.SearchMode);
+                TrackLoadResult result;
+                if (playQuery.QueryType == PlayQueryType.External)
+                {
+                    result = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, new TrackLoadOptions(playQuery.SearchMode, StrictSearchBehavior.Resolve)).ConfigureAwait(false);
+                }
+                else
+                {
+                    result = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, new TrackLoadOptions(playQuery.SearchMode, StrictSearchBehavior.Throw)).ConfigureAwait(false);
+                }
 
                 if (!result.HasMatches)
                 {
-                    await FollowupAsync("We could not find any tracks that fit the criteria.");
+                    await FollowupAsync("We could not find any tracks that fit the criteria.").ConfigureAwait(false);
                     return;
                 }
                 IEnumerable<LavalinkTrack>? shuffledTracks = null;
@@ -120,7 +128,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             }
         }
         [SlashCommand("fromdb", description: "Plays music from database only.", runMode: RunMode.Async)]
-        public async Task PlayFromDbAsync(string query)
+        public async Task PlayFromDbAsync(string query, bool shuffle = false)
         {
             try
             {
@@ -185,7 +193,8 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     await FollowupAsync(embed: embed, components: components).ConfigureAwait(false);
                     return;
                 }
-                await PlayDatabaseTracks(player, result);
+
+                await PlayDatabaseTracks(player, result, shuffle: shuffle);
             }
             catch (Exception ex)
             {
@@ -193,7 +202,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 throw;
             }
         }
-        private async Task PlayDatabaseTracks(VoteLavalinkPlayer player, KenobiAPISearchResult result, int wantedTrackIndex = 0, int wantedAlbumIndex = 0, bool doModifyOriginalResponse = false)
+        private async Task PlayDatabaseTracks(VoteLavalinkPlayer player, KenobiAPISearchResult result, int wantedTrackIndex = 0, int wantedAlbumIndex = 0, bool doModifyOriginalResponse = false, bool shuffle = false)
         {
             if (result.Tracks.Count > 0 && result.Albums.Count == 0)
             {
@@ -319,7 +328,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     return PlayQueryType.External;
                 }
             }
-            catch (UriFormatException ex)
+            catch (UriFormatException)
             {
                 _logger.LogWarning("Could not form Uri from query, attempting to do a direct Youtube search.");
                 return PlayQueryType.YoutubeSearch;
@@ -337,7 +346,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         Query = query,
                         Uri = uri,
                         SearchMode = TrackSearchMode.YouTube,
-                        IsLive = false,
+                        QueryType = PlayQueryType.Youtube,
                         IsPlaylist = true,
                         ModifyOriginalResponse = false,
                     };
@@ -349,7 +358,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         Query = query,
                         Uri = uri,
                         SearchMode = TrackSearchMode.YouTube,
-                        IsLive = false,
+                        QueryType = PlayQueryType.Youtube,
                         IsPlaylist = false,
                         ModifyOriginalResponse = false,
                     };
@@ -362,7 +371,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     Query = query,
                     Uri = null,
                     SearchMode = TrackSearchMode.YouTube,
-                    IsLive = false,
+                    QueryType = PlayQueryType.YoutubeSearch,
                     IsPlaylist = false,
                     ModifyOriginalResponse = false,
                 };
@@ -378,8 +387,8 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     Query = query,
                     Uri = uri,
                     SearchMode = TrackSearchMode.None,
+                    QueryType = PlayQueryType.External,
                     IsPlaylist = false,
-                    IsLive = true,
                     ModifyOriginalResponse = false,
                 };
             }
@@ -390,14 +399,14 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     Query = query,
                     Uri = uri,
                     SearchMode = TrackSearchMode.None,
+                    QueryType = PlayQueryType.External,
                     IsPlaylist = false,
-                    IsLive = true,
                     ModifyOriginalResponse = false,
                 };
             }
         }
 
-        private enum PlayQueryType
+        public enum PlayQueryType
         {
             None,
             Youtube,
@@ -410,16 +419,16 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             public required string Query { get; init; }
             public Uri? Uri { get; init; }
             public TrackSearchMode SearchMode { get; init; }
+            public PlayQueryType QueryType { get; init; }
             public bool IsPlaylist { get; init; }
-            public bool IsLive {  get; init; }
             public bool ModifyOriginalResponse { get; init; }
-            public PlayQuery(string query, Uri? uri, TrackSearchMode searchMode, bool isPlaylist, bool isLive, bool modifyOriginalResponse)
+            public PlayQuery(string query, Uri? uri, TrackSearchMode searchMode, PlayQueryType queryType, bool isPlaylist, bool isLive, bool modifyOriginalResponse)
             {
                 Query = query;
                 Uri = uri;
                 SearchMode = searchMode;
+                QueryType = queryType;
                 IsPlaylist = isPlaylist;
-                IsLive = isLive;
                 ModifyOriginalResponse = modifyOriginalResponse;
             }
 
