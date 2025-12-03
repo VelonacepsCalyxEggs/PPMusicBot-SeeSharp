@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.ObjectModel;
+using System.Text;
 using Discord;
 using Discord.Interactions;
 using Lavalink4NET.Extensions;
@@ -214,6 +215,10 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     return;
                 }
                 result.Tracks = [result.Tracks[wantedTrackIndex]];
+                if (shuffle)
+                {
+                    result.Tracks = result.Tracks.Shuffle().ToList();
+                }
                 var position = await player.PlayAsync(new CustomQueueTrackItem(tracks.Track, result.Tracks[0])).ConfigureAwait(false);
 
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(position, tracks, result, null)).ConfigureAwait(false);
@@ -223,16 +228,21 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
             }
-            else if (result.Albums.Count > 0)
+            else if (result.Albums.Count() > 0)
             {
                 if (wantedAlbumIndex != 0)
                 {
                     result.Albums = [result.Albums[wantedAlbumIndex]];
                 }
-                if (result.Albums[0].Music.Count == 0)
+                if (result.Albums[0].Music.Count() == 0)
                 {
                     result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].id);
                 }
+                if (shuffle)
+                {
+                    result.Albums[0].Music = result.Albums[0].Music.Shuffle().ToList();
+                }
+
                 var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]).OriginalString, TrackSearchMode.None);
                 if (firstToPlay is null)
                 {
