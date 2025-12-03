@@ -20,6 +20,7 @@ namespace PPMusicBot
             {
                 await Task.Delay(1000, stoppingToken);
             }
+            _logger.LogInformation($"{nameof(BotWorker)} was shutdown.");
         }
     }
 }

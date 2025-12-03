@@ -9,8 +9,10 @@ using Lavalink4NET.InactivityTracking.Extensions;
 using PPMusicBot;
 using PPMusicBot.Services;
 using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 
 var builder = Host.CreateApplicationBuilder(args);
+bool isProduction = builder.Environment.IsProduction();
 var logsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PPMusicBot", "logs/ppmusicbot-.txt");
 var loggerConfiguration = new LoggerConfiguration()
     .Enrich.FromLogContext()
@@ -19,7 +21,16 @@ var loggerConfiguration = new LoggerConfiguration()
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         shared: true)
-    .WriteTo.Console();
+    .WriteTo.Console(theme: AnsiConsoleTheme.Literate);
+
+if (isProduction)
+{
+    loggerConfiguration.MinimumLevel.Information();
+}
+else
+{
+    loggerConfiguration.MinimumLevel.Verbose(); 
+}
 
 Log.Logger = loggerConfiguration.CreateLogger();
 builder.Services.AddSerilog();

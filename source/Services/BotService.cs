@@ -66,8 +66,21 @@ namespace PPMusicBot.Services
             {
                 _logger.LogInformation("Initiating Bot Service graceful shutdown...");
             }
+            if (_audioService.Players.Players.Count() > 0)
+            {
+                foreach (var player in _audioService.Players.Players)
+                {
+                    if (player != null)
+                    {
+                        // TODO: Add logic that will warn the users about the disconnection.
+                        await player.DisconnectAsync();
+                    }
+                }
+            }
             await _audioService.StopAsync();
+            await _inactivityTrackingService.StopAsync();
             await _botClient.StopAsync();
+            await _databaseService.StopAsync();
         }
 
         private void SetupEventHandlers()
@@ -105,7 +118,7 @@ namespace PPMusicBot.Services
 
         private async Task OnVoiceStateUpdated(object sender, Lavalink4NET.Clients.Events.VoiceStateUpdatedEventArgs eventArgs)
         {
-            _logger.LogInformation($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
+            _logger.LogDebug($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
             await _databaseService.RecordVoiceChannelData(eventArgs.UserId, eventArgs.OldVoiceState.VoiceChannelId, eventArgs.VoiceState.VoiceChannelId, eventArgs.GuildId, DateTime.Now);
             if (eventArgs.IsCurrentUser) return;
             var player = await _audioService.Players.GetPlayerAsync<LavalinkPlayer>(eventArgs.GuildId);
@@ -121,7 +134,7 @@ namespace PPMusicBot.Services
             {
                 userCount--;
             }
-            _logger.LogWarning($"Bot Voice Channel: {botVoiceChannel.Id}, Users: {userCount}");
+            _logger.LogDebug($"Bot Voice Channel: {botVoiceChannel.Id}, Users: {userCount}");
             if (userCount <= 1)
             {
                 ulong? interactionChannelId = _musicService.GetTextChannelId(guild.Id);
