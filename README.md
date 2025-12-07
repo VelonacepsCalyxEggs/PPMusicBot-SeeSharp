@@ -3,21 +3,15 @@
 A rewrite of a Discord music bot originally written in JavaScript/TypeScript, now implemented in C# using Discord.NET and Lavalink. This repository contains the C# project for a Discord music bot that connects to a Lavalink server to stream audio to voice channels.
 Not anything unique really.
 
-## About
-
-This project is a C# Discord music bot that uses Discord.NET for interacting with Discord and Lavalink for audio streaming. It offloads audio decoding/encoding and streaming to Lavalink, allowing the C# bot to control playback and manage queues.
-
-Goal: provide a maintainable, extensible, and efficient music bot architecture in C#.
-
 ## Features
 
 - Play music from URLs (YouTube, direct mp3, icecast, etc.) via Lavalink
 - All the expected features of a player, queue, skip, etc.
-- Can query my music database and play music from it via fromdb command.
+- Can query my music database and play music from it via fromdb command (if an API key is provided).
 
 ## Requirements
 
-- .NET SDK (9.0 or newer recommended)
+- .NET SDK/Runtime 10.0
 - A Discord bot application with a Bot token: https://discord.com/developers/applications
 - Java 17 or higher (Lavalink requires a Java runtime)
 - Lavalink server (jar) - separate process
