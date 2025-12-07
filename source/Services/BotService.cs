@@ -24,7 +24,7 @@ namespace PPMusicBot.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly MusicService _musicService;
         private readonly DatabaseService _databaseService;
-
+        private readonly IHostApplicationLifetime _applicationLifetime;
         public BotService(
             ILogger<BotService> logger,
             IConfiguration configuration,
@@ -34,7 +34,8 @@ namespace PPMusicBot.Services
             IAudioService audioService,
             IInactivityTrackingService inactivityTrackingService,
             MusicService musicService,
-            DatabaseService databaseService)
+            DatabaseService databaseService,
+            IHostApplicationLifetime applicationLifetime)
         {
             _configuration = configuration;
             _logger = logger;
@@ -45,6 +46,7 @@ namespace PPMusicBot.Services
             _inactivityTrackingService = inactivityTrackingService;
             _musicService = musicService;
             _databaseService = databaseService;
+            _applicationLifetime = applicationLifetime;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -66,21 +68,56 @@ namespace PPMusicBot.Services
             {
                 _logger.LogInformation("Initiating Bot Service graceful shutdown...");
             }
-            if (_audioService.Players.Players.Count() > 0)
+
+            try
             {
-                foreach (var player in _audioService.Players.Players)
+                // Disconnect all players and inform users.
+                if (_audioService.Players.Players.Any())
                 {
-                    if (player != null)
-                    {
-                        // TODO: Add logic that will warn the users about the disconnection.
-                        await player.DisconnectAsync();
-                    }
+                    _logger.LogInformation($"Disconnecting {_audioService.Players.Players.Count()} players...");
+
+                    var disconnectTasks = _audioService.Players.Players
+                        .Where(player => player != null && player.State == PlayerState.Playing)
+                        .Select(async player =>
+                        {
+                            try
+                            {
+                                var guild = _botClient.GetGuild(player.GuildId);
+                                if (guild != null)
+                                {
+                                    var textChannelId = _musicService.GetTextChannelId(player.GuildId);
+                                    if (textChannelId.HasValue)
+                                    {
+                                        var textChannel = guild.GetTextChannel(textChannelId.Value);
+                                        if (textChannel != null)
+                                        {
+                                            await textChannel.SendMessageAsync("Bot is shutting down. How inconceivable.");
+                                        }
+                                    }
+                                }
+                                await player.DisconnectAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, $"Failed to disconnect player for guild {player.GuildId}");
+                            }
+                        });
+
+                    await Task.WhenAll(disconnectTasks);
                 }
+
+                await _audioService.StopAsync();
+                await _inactivityTrackingService.StopAsync();
+                await _botClient.StopAsync();
+                await _databaseService.StopAsync();
+                await _botClient.LogoutAsync();
+
+                _logger.LogInformation("Bot Service shutdown completed.");
             }
-            await _audioService.StopAsync();
-            await _inactivityTrackingService.StopAsync();
-            await _botClient.StopAsync();
-            await _databaseService.StopAsync();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during graceful shutdown");
+            }
         }
 
         private void SetupEventHandlers()
