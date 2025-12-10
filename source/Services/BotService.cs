@@ -152,7 +152,7 @@ namespace PPMusicBot.Services
             _logger.LogInformation($"Voice Server Updated: {eventArgs.VoiceServer.Endpoint.ToString()}");
             return Task.CompletedTask;
         }
-
+        // This is still not tracking people in the voice channel properly.
         private async Task OnVoiceStateUpdated(object sender, Lavalink4NET.Clients.Events.VoiceStateUpdatedEventArgs eventArgs)
         {
             _logger.LogDebug($"Voice State Updated: {eventArgs.VoiceState.ToString()}");

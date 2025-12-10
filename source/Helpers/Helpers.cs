@@ -2,13 +2,13 @@
 using Lavalink4NET.Artwork;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
-using Lavalink4NET.Rest.Entities.Server;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
 using System.Text;
+using static PPMusicBot.Models.KenobiAPIModels;
 
 namespace PPMusicBot.Helpers
 {
@@ -26,7 +26,7 @@ namespace PPMusicBot.Helpers
                         Title = position is 0 ? "Playing:" : "Added to queue:",
                         Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].album.name)}**",
                         Footer = new EmbedFooterBuilder() { Text = $" Duration: {(track.IsLiveStream == false ? track.Duration.ToString("hh\\:mm\\:ss") : '∞')} | Position: {position}" },
-                        ImageUrl = result is null ? (await BuildImageUrlAsync(artworkService, track)) : Helpers.GetKenobiApiAlbumPreview(result.Tracks[0].album).OriginalString
+                        ImageUrl = result is null ? (await BuildImageUrlAsync(artworkService, track)) : Helpers.GetKenobiApiImagePreview(result).OriginalString
 
                     }.Build();
                 }
@@ -67,7 +67,7 @@ namespace PPMusicBot.Helpers
                     Title = position is 0 ? "Playing:" : "Added to queue:",
                     Description = $"**{result.Albums[0].name}** with {result.Albums[0].Music.Count} tracks.",
                     Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {position} to {position + result.Albums[0].Music.Count - 1}" },
-                    ImageUrl = Helpers.GetKenobiApiAlbumPreview(result.Albums[0]).OriginalString
+                    ImageUrl = Helpers.GetKenobiApiImagePreview(result: result).OriginalString
 
                 }.Build();
             }
@@ -100,7 +100,7 @@ namespace PPMusicBot.Helpers
                     Title = "Currently playing:",
                     Description = $"**{track.MusicTrack.title}** by **{track.MusicTrack.artist.name}** from **{track.MusicTrack.album.name}**",
                     Footer = new EmbedFooterBuilder() { Text = $" Duration: {(track.Reference.Track.IsLiveStream == false ? track.Reference.Track.Duration.ToString("hh\\:mm\\:ss") : '∞')} | {player.Position?.Position:hh\\:mm\\:ss}" },
-                    ImageUrl = Helpers.GetKenobiApiAlbumPreview(track.MusicTrack.album).OriginalString
+                    ImageUrl = Helpers.GetKenobiApiImagePreview(inpTrack: track.MusicTrack).OriginalString
                 }.Build();
             }
             else
@@ -163,11 +163,70 @@ namespace PPMusicBot.Helpers
             return (embed, components);
         }
 
-        public static Uri GetKenobiApiAlbumPreview(KenobiAPIModels.Album album)
+        public static Uri GetKenobiApiImagePreview(KenobiAPISearchResult? result = null, MusicTrack? inpTrack = null, KenobiAPIModels.Album? inpAlbum = null)
         {
-            var kenobiAlbumimagesPath = "https://www.funckenobi42.space/images/AlbumCoverArt/";
-            if (album.coverArt.Count == 0) return new Uri(kenobiAlbumimagesPath);
-            return new Uri(kenobiAlbumimagesPath + album.coverArt[0]?.filePath?.Split('\\').Last());
+            string kenobiAlbumimagesPath = "https://www.funckenobi42.space/images/AlbumCoverArt/";
+            string kenobiTrackimagesPath = "https://www.funckenobi42.space/images/TrackCoverArt/";
+            if (result != null)
+            {
+                var track = result.Tracks.FirstOrDefault();
+                var album = result.Albums.FirstOrDefault();
+                if (track != null)
+                {
+                    if (track.MusicMetadata?.coverArt != null)
+                    {
+                        return new Uri(kenobiTrackimagesPath + track.MusicMetadata.coverArt.filePath?.Split('\\').Last());
+                    }
+                    else
+                    {
+                        return new Uri(kenobiAlbumimagesPath);
+                    }
+                }
+                else if (album != null)
+                {
+                    if (album.coverArt.Count != 0)
+                    {
+                        return new Uri(kenobiAlbumimagesPath + album.coverArt[0]?.filePath?.Split('\\').Last());
+                    }
+                    else
+                    {
+                        return new Uri(kenobiAlbumimagesPath);
+                    }
+                }
+                else
+                {
+                    return new Uri(kenobiAlbumimagesPath);
+                }
+            }
+            else
+            {
+                if (inpTrack != null)
+                {
+                    if (inpTrack.MusicMetadata?.coverArt != null)
+                    {
+                        return new Uri(kenobiTrackimagesPath + inpTrack.MusicMetadata.coverArt.filePath?.Split('\\').Last());
+                    }
+                    else
+                    {
+                        return new Uri(kenobiAlbumimagesPath);
+                    }
+                }
+                else if (inpAlbum != null)
+                {
+                    if (inpAlbum.coverArt.Count != 0)
+                    {
+                        return new Uri(kenobiAlbumimagesPath + inpAlbum.coverArt[0]?.filePath?.Split('\\').Last());
+                    }
+                    else
+                    {
+                        return new Uri(kenobiAlbumimagesPath);
+                    }
+                }
+                else
+                {
+                    return new Uri(kenobiAlbumimagesPath);
+                }
+            }
         }
         // This should probably be encapsulated inside the play function as a constant. 
         // Remake later.
