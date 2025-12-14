@@ -177,6 +177,10 @@ namespace PPMusicBot.Helpers
                     {
                         return new Uri(kenobiTrackimagesPath + track.MusicMetadata.coverArt.filePath?.Split('\\').Last());
                     }
+                    else if (track.album.coverArt.Count != 0)
+                    {
+                        return new Uri(kenobiAlbumimagesPath + track.album.coverArt[0]?.filePath?.Split('\\').Last());
+                    }
                     else
                     {
                         return new Uri(kenobiAlbumimagesPath);
@@ -205,6 +209,10 @@ namespace PPMusicBot.Helpers
                     if (inpTrack.MusicMetadata?.coverArt != null)
                     {
                         return new Uri(kenobiTrackimagesPath + inpTrack.MusicMetadata.coverArt.filePath?.Split('\\').Last());
+                    }
+                    else if (inpTrack.album.coverArt.Count != 0)
+                    {
+                        return new Uri(kenobiAlbumimagesPath + inpTrack.album.coverArt[0]?.filePath?.Split('\\').Last());
                     }
                     else
                     {
