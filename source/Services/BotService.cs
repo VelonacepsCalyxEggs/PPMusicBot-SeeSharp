@@ -206,7 +206,7 @@ namespace PPMusicBot.Services
             return Task.CompletedTask;
         }
         // This needs proper handling.
-        private async void OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
+        private async Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
         {
             _logger.LogError($"Track Exeption: {eventArgs.Exception.Cause}: {eventArgs.Exception.Message} \n Track: {eventArgs.Track.Title}");
             ulong? textChannelID = _musicService.GetTextChannelId(eventArgs.Player.GuildId);
