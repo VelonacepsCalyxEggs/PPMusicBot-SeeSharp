@@ -206,12 +206,19 @@ namespace PPMusicBot.Services
             return Task.CompletedTask;
         }
         // This needs proper handling.
-        private Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
+        private async void OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
         {
             _logger.LogError($"Track Exeption: {eventArgs.Exception.Cause}: {eventArgs.Exception.Message} \n Track: {eventArgs.Track.Title}");
-            //VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
-            //await pl.SkipAsync()
-            return Task.CompletedTask;
+            ulong? textChannelID = _musicService.GetTextChannelId(eventArgs.Player.GuildId);
+            if (textChannelID is not null)
+            {
+                SocketTextChannel textChannel = (SocketTextChannel)await _botClient.GetChannelAsync((ulong)textChannelID);
+                if (textChannel is not null)
+                {
+                    await textChannel.SendMessageAsync($"There was a problem loading the track {eventArgs.Track.Title} from {eventArgs.Track.SourceName}. \n Error: {eventArgs.Exception.Cause}");
+                }
+             }
+            return;
         }
         // Never had this happen before, needs testing.
         private Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)
