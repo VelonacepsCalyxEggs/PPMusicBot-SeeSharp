@@ -152,7 +152,6 @@ namespace PPMusicBot.Services
             _logger.LogInformation($"Voice Server Updated: {eventArgs.VoiceServer.Endpoint.ToString()}");
             return Task.CompletedTask;
         }
-        // This is still not tracking people in the voice channel properly.
         private async Task OnVoiceStateUpdated(object sender, Lavalink4NET.Clients.Events.VoiceStateUpdatedEventArgs eventArgs)
         {
             _logger.LogDebug($"Voice State Updated: {eventArgs.VoiceState.ToString()}");
@@ -165,13 +164,8 @@ namespace PPMusicBot.Services
             var botVoiceChannel = guild.GetVoiceChannel(player.VoiceChannelId);
             if (botVoiceChannel == null) return;
             var affectedChannelId = eventArgs.OldVoiceState.VoiceChannelId ?? eventArgs.VoiceState.VoiceChannelId;
-            if (!(botVoiceChannel.Id == affectedChannelId)) return;
-            var userCount = botVoiceChannel.Users.Count();
-            if (eventArgs.OldVoiceState.VoiceChannelId == player.VoiceChannelId)
-            {
-                userCount--;
-            }
-            _logger.LogDebug($"Bot Voice Channel: {botVoiceChannel.Id}, Users: {userCount}");
+            if (botVoiceChannel.Id != affectedChannelId) return;
+            var userCount = botVoiceChannel.ConnectedUsers.Count();
             if (userCount <= 1)
             {
                 ulong? interactionChannelId = _musicService.GetTextChannelId(guild.Id);

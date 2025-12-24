@@ -1,6 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Text;
-using Discord;
+﻿using Discord;
 using Discord.Interactions;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.Players.Vote;
@@ -8,6 +6,7 @@ using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
+using System.Text;
 using static PPMusicBot.Helpers.Helpers;
 namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 {
@@ -109,7 +108,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 
                 
                 await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, result, null, _artworkService)).ConfigureAwait(false);
-                if (playQuery.IsPlaylist)
+                if (playQuery.IsPlaylist || result.IsPlaylist)
                 {
                     foreach (var track in shuffledTracks ?? result.Tracks)
                     {
@@ -349,7 +348,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         {
             if (uri != null)
             {
-                if (uri.Query.Contains("?list="))
+                if (uri.Query.Contains("?list=") || uri.Query.Contains("&list="))
                 {
                     return new PlayQuery()
                     {
