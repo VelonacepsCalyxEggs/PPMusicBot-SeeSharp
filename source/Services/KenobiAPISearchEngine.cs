@@ -137,7 +137,7 @@ namespace PPMusicBot.Services
 
         public async Task<List<KenobiAPIModels.MusicTrack>> RequestAlbumSongsAsync(string albumId)
         {
-            var url = _baseAddress + $"/music?albumId={albumId}&limit=0&sortBy=trackNumber&sortOrder=asc";
+            var url = _baseAddress + $"/music?AlbumId={albumId}&Limit=0&SortBy=TrackNumber&SortOrder=asc";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
             var options = new JsonSerializerSettings()
