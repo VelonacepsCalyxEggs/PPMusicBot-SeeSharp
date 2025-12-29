@@ -77,33 +77,33 @@ namespace PPMusicBot.Services
         }
         public Uri GetTrackUriFromTrackObject(KenobiAPIModels.MusicTrack track)
         {
-            return new Uri(_baseAddress + $"file/createMusicStream/{track.MusicFile[0].id}");
+            return new Uri(_baseAddress + $"file/createMusicStream/{track.MusicFile[0].Id}");
         }
 
         private async Task<KenobiAPISearchResult?> CalculateResponseAsync(KenobiAPIModels.SearchResultsDto searchResults)
         {
             double highestScoreTrack = 0;
             double highestScoreAlbum = 0;
-            if (searchResults.tracks.Count != 0) highestScoreTrack =+ searchResults.tracks[0].score;
-            if (searchResults.albums.Count != 0) highestScoreAlbum =+ searchResults.albums[0].score;
+            if (searchResults.Tracks.Count != 0) highestScoreTrack =+ searchResults.Tracks[0].Score;
+            if (searchResults.Albums.Count != 0) highestScoreAlbum =+ searchResults.Albums[0].Score;
 
-            if (searchResults.tracks.Count == 0 && searchResults.albums.Count == 0)
+            if (searchResults.Tracks.Count == 0 && searchResults.Albums.Count == 0)
             {
                 return null;
             }            
 
-            var slicedTracks = searchResults.tracks.Skip(1).ToList();
-            var slicedAlbums = searchResults.albums.Skip(1).ToList();
+            var slicedTracks = searchResults.Tracks.Skip(1).ToList();
+            var slicedAlbums = searchResults.Albums.Skip(1).ToList();
 
             if (highestScoreAlbum == highestScoreTrack) 
-                return new KenobiAPISearchResult(searchResults.tracks.Slice(0, Math.Min(searchResults.tracks.Count, MAX_SUGGESTIONS)), searchResults.albums.Slice(0, Math.Min(searchResults.albums.Count, MAX_SUGGESTIONS)), true);
+                return new KenobiAPISearchResult(searchResults.Tracks.Slice(0, Math.Min(searchResults.Tracks.Count, MAX_SUGGESTIONS)), searchResults.Albums.Slice(0, Math.Min(searchResults.Albums.Count, MAX_SUGGESTIONS)), true);
 
             if (highestScoreTrack != 0 && highestScoreTrack > highestScoreAlbum)
             {
                 var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredTrack>(slicedTracks, highestScoreTrack, highestScoreAlbum);
 
-                if (resultState == true) return new KenobiAPISearchResult(searchResults.tracks[..1], []);
-                else return new KenobiAPISearchResult(searchResults.tracks.Slice(0, Math.Min(searchResults.tracks.Count, MAX_SUGGESTIONS)), searchResults.albums.Slice(0, Math.Min(searchResults.albums.Count, MAX_SUGGESTIONS)), true);
+                if (resultState == true) return new KenobiAPISearchResult(searchResults.Tracks[..1], []);
+                else return new KenobiAPISearchResult(searchResults.Tracks.Slice(0, Math.Min(searchResults.Tracks.Count, MAX_SUGGESTIONS)), searchResults.Albums.Slice(0, Math.Min(searchResults.Albums.Count, MAX_SUGGESTIONS)), true);
                 }
             else if (highestScoreAlbum != 0)
             {
@@ -111,11 +111,11 @@ namespace PPMusicBot.Services
 
                 if (resultState == true)
                 {
-                    var parsedData = await RequestAlbumSongsAsync(searchResults.albums[0].id);
-                    searchResults.albums[..1][0].Music = parsedData;
-                    return new KenobiAPISearchResult([], searchResults.albums[..1]);
+                    var parsedData = await RequestAlbumSongsAsync(searchResults.Albums[0].Id);
+                    searchResults.Albums[..1][0].Music = parsedData;
+                    return new KenobiAPISearchResult([], searchResults.Albums[..1]);
                 }
-                else return new KenobiAPISearchResult(searchResults.tracks.Slice(0, Math.Min(searchResults.tracks.Count, MAX_SUGGESTIONS)), searchResults.albums.Slice(0, Math.Min(searchResults.albums.Count, MAX_SUGGESTIONS)), true);
+                else return new KenobiAPISearchResult(searchResults.Tracks.Slice(0, Math.Min(searchResults.Tracks.Count, MAX_SUGGESTIONS)), searchResults.Albums.Slice(0, Math.Min(searchResults.Albums.Count, MAX_SUGGESTIONS)), true);
             }
             else
             {
@@ -128,7 +128,7 @@ namespace PPMusicBot.Services
         {
             foreach (var item in items)
             {
-                if (item.score == highScorePrimary || item.score == highScoreSecondary) return false;
+                if (item.Score == highScorePrimary || item.Score == highScoreSecondary) return false;
             }
             if (highScorePrimary >= HIGH_THRESHHOLD) return true;
             if (highScorePrimary < LOW_THRESHHOLD) return false;
@@ -164,10 +164,10 @@ namespace PPMusicBot.Services
 
   
 
-    public class KenobiAPISearchResult(List<KenobiAPIModels.ScoredTrack> tracks, List<KenobiAPIModels.ScoredAlbum> albums, bool suggestion = false, Exception? error = null)
+    public class KenobiAPISearchResult(List<KenobiAPIModels.ScoredTrack> Tracks, List<KenobiAPIModels.ScoredAlbum> Albums, bool suggestion = false, Exception? error = null)
     {
-        public List<KenobiAPIModels.ScoredTrack> Tracks = tracks;
-        public List<KenobiAPIModels.ScoredAlbum> Albums = albums;
+        public List<KenobiAPIModels.ScoredTrack> Tracks = Tracks;
+        public List<KenobiAPIModels.ScoredAlbum> Albums = Albums;
         public bool Suggestion = suggestion;
         public Exception? Error = error;
     };

@@ -164,8 +164,8 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         var trackCount = Math.Min(result.Tracks.Count, 15);
                         for (var i = 0; i < trackCount; i++)
                         {
-                            sb.AppendLine($"{result.Tracks[i].title} - Score: {result.Tracks[i].score}");
-                            menuBuilder.AddOption($"Track: {result.Tracks[i].title}", $"track_{i}");
+                            sb.AppendLine($"{result.Tracks[i].Title} - Score: {result.Tracks[i].Score}");
+                            menuBuilder.AddOption($"Track: {result.Tracks[i].Title}", $"track_{i}");
                         }
                     }
 
@@ -176,8 +176,8 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         var albumCount = Math.Min(result.Albums.Count, remainingSlots);
                         for (var i = 0; i < albumCount; i++)
                         {
-                            sb.AppendLine($"{result.Albums[i].name} - Score: {result.Albums[i].score}");
-                            menuBuilder.AddOption($"Album: {result.Albums[i].name}", $"album_{i}");
+                            sb.AppendLine($"{result.Albums[i].Name} - Score: {result.Albums[i].Score}");
+                            menuBuilder.AddOption($"Album: {result.Albums[i].Name}", $"album_{i}");
                         }
                     }
 
@@ -235,7 +235,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
                 if (result.Albums[0].Music.Count() == 0)
                 {
-                    result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].id);
+                    result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].Id);
                 }
                 if (shuffle)
                 {

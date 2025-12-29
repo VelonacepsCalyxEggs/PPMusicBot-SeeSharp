@@ -24,7 +24,7 @@ namespace PPMusicBot.Helpers
                     return new EmbedBuilder()
                     {
                         Title = position is 0 ? "Playing:" : "Added to queue:",
-                        Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].album.name)}**",
+                        Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].Album.Name)}**",
                         Footer = new EmbedFooterBuilder() { Text = $" Duration: {(track.IsLiveStream == false ? track.Duration.ToString("hh\\:mm\\:ss") : '∞')} | Position: {position}" },
                         ImageUrl = result is null ? (await BuildImageUrlAsync(artworkService, track)) : Helpers.GetKenobiApiImagePreview(result).OriginalString
 
@@ -60,12 +60,12 @@ namespace PPMusicBot.Helpers
                 TimeSpan totalAlbumDuration = new TimeSpan();
                 foreach (var item in result.Albums[0].Music)
                 {
-                    totalAlbumDuration += new TimeSpan(0, 0, item.duration);
+                    totalAlbumDuration += new TimeSpan(0, 0, item.Duration);
                 }
                 return new EmbedBuilder()
                 {
                     Title = position is 0 ? "Playing:" : "Added to queue:",
-                    Description = $"**{result.Albums[0].name}** with {result.Albums[0].Music.Count} tracks.",
+                    Description = $"**{result.Albums[0].Name}** with {result.Albums[0].Music.Count} tracks.",
                     Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {position} to {position + result.Albums[0].Music.Count - 1}" },
                     ImageUrl = Helpers.GetKenobiApiImagePreview(result: result).OriginalString
 
@@ -73,7 +73,7 @@ namespace PPMusicBot.Helpers
             }
             else
             {
-                throw new ArgumentNullException("No track or album having SearchResult was passed.");
+                throw new ArgumentNullException("No track or Album having SearchResult was passed.");
             }
         }
 
@@ -98,7 +98,7 @@ namespace PPMusicBot.Helpers
                 return new EmbedBuilder()
                 {
                     Title = "Currently playing:",
-                    Description = $"**{track.MusicTrack.title}** by **{track.MusicTrack.artist.name}** from **{track.MusicTrack.album.name}**",
+                    Description = $"**{track.MusicTrack.Title}** by **{track.MusicTrack.Artist.Name}** from **{track.MusicTrack.Album.Name}**",
                     Footer = new EmbedFooterBuilder() { Text = $" Duration: {(track.Reference.Track.IsLiveStream == false ? track.Reference.Track.Duration.ToString("hh\\:mm\\:ss") : '∞')} | {player.Position?.Position:hh\\:mm\\:ss}" },
                     ImageUrl = Helpers.GetKenobiApiImagePreview(inpTrack: track.MusicTrack).OriginalString
                 }.Build();
@@ -129,7 +129,7 @@ namespace PPMusicBot.Helpers
                 var customData = PlayerExtensions.GetCustomData(track);
 
                 if (customData != null)
-                    sb.AppendLine($"{i + 1}. {customData?.MusicTrack.title} by {customData?.MusicTrack.artist.name}");
+                    sb.AppendLine($"{i + 1}. {customData?.MusicTrack.Title} by {customData?.MusicTrack.Artist.Name}");
                 else
                     sb.AppendLine($"{i + 1}. {track.Track?.Title} by {track.Track?.Author}");
 
@@ -170,27 +170,27 @@ namespace PPMusicBot.Helpers
             if (result != null)
             {
                 var track = result.Tracks.FirstOrDefault();
-                var album = result.Albums.FirstOrDefault();
+                var Album = result.Albums.FirstOrDefault();
                 if (track != null)
                 {
-                    if (track.MusicMetadata?.coverArt != null)
+                    if (track.MusicMetadata?.CoverArt != null)
                     {
-                        return new Uri(kenobiTrackimagesPath + track.MusicMetadata.coverArt.filePath?.Split('\\').Last());
+                        return new Uri(kenobiTrackimagesPath + track.MusicMetadata.CoverArt.FilePath?.Split('\\').Last());
                     }
-                    else if (track.album.coverArt.Count != 0)
+                    else if (track.Album.CoverArt.Count != 0)
                     {
-                        return new Uri(kenobiAlbumimagesPath + track.album.coverArt[0]?.filePath?.Split('\\').Last());
+                        return new Uri(kenobiAlbumimagesPath + track.Album.CoverArt[0]?.FilePath?.Split('\\').Last());
                     }
                     else
                     {
                         return new Uri(kenobiAlbumimagesPath);
                     }
                 }
-                else if (album != null)
+                else if (Album != null)
                 {
-                    if (album.coverArt.Count != 0)
+                    if (Album.CoverArt.Count != 0)
                     {
-                        return new Uri(kenobiAlbumimagesPath + album.coverArt[0]?.filePath?.Split('\\').Last());
+                        return new Uri(kenobiAlbumimagesPath + Album.CoverArt[0]?.FilePath?.Split('\\').Last());
                     }
                     else
                     {
@@ -206,13 +206,13 @@ namespace PPMusicBot.Helpers
             {
                 if (inpTrack != null)
                 {
-                    if (inpTrack.MusicMetadata?.coverArt != null)
+                    if (inpTrack.MusicMetadata?.CoverArt != null)
                     {
-                        return new Uri(kenobiTrackimagesPath + inpTrack.MusicMetadata.coverArt.filePath?.Split('\\').Last());
+                        return new Uri(kenobiTrackimagesPath + inpTrack.MusicMetadata.CoverArt.FilePath?.Split('\\').Last());
                     }
-                    else if (inpTrack.album.coverArt.Count != 0)
+                    else if (inpTrack.Album.CoverArt.Count != 0)
                     {
-                        return new Uri(kenobiAlbumimagesPath + inpTrack.album.coverArt[0]?.filePath?.Split('\\').Last());
+                        return new Uri(kenobiAlbumimagesPath + inpTrack.Album.CoverArt[0]?.FilePath?.Split('\\').Last());
                     }
                     else
                     {
@@ -221,9 +221,9 @@ namespace PPMusicBot.Helpers
                 }
                 else if (inpAlbum != null)
                 {
-                    if (inpAlbum.coverArt.Count != 0)
+                    if (inpAlbum.CoverArt.Count != 0)
                     {
-                        return new Uri(kenobiAlbumimagesPath + inpAlbum.coverArt[0]?.filePath?.Split('\\').Last());
+                        return new Uri(kenobiAlbumimagesPath + inpAlbum.CoverArt[0]?.FilePath?.Split('\\').Last());
                     }
                     else
                     {

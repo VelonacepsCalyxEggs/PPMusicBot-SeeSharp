@@ -97,7 +97,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 string description = string.Empty;
                 if (player.TryGetCustomData(out var data) && data is not null)
                 {
-                    description = $"Now Playing: {data.MusicTrack.title}";
+                    description = $"Now Playing: {data.MusicTrack.Title}";
                 }
                 else
                 {

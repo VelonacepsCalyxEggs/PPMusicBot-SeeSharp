@@ -10,117 +10,118 @@ namespace PPMusicBot.Models
     {
         public interface IScoredItem
         {
-            double score { get; set; }
-            string resultType { get; set; }
+            double Score { get; set; }
+            string ResultType { get; set; }
         }
 
         public class SearchResultsDto
         {
-            public List<ScoredTrack> tracks { get; set; } = new List<ScoredTrack>();
-            public List<ScoredAlbum> albums { get; set; } = new List<ScoredAlbum>();
-            public List<ScoredArtist> artists { get; set; } = new List<ScoredArtist>();
+            public List<ScoredTrack> Tracks { get; set; } = new List<ScoredTrack>();
+            public List<ScoredAlbum> Albums { get; set; } = new List<ScoredAlbum>();
+            public List<ScoredArtist> Artists { get; set; } = new List<ScoredArtist>();
         }
 
         public class ApiResponseDto<T>
         {
             public T? data { get; set; }
-            public int amount { get; set; }
+            public int Amount { get; set; }
         }
 
         public class ScoredTrack : MusicTrack, IScoredItem
         {
-            public double score { get; set; }
-            public required string resultType { get; set; }
+            public double Score { get; set; }
+            public required string ResultType { get; set; }
         }
 
         public class ScoredAlbum : Album, IScoredItem
         {
-            public double score { get; set; }
-            public required string resultType { get; set; }
+            public double Score { get; set; }
+            public required string ResultType { get; set; }
         }
 
         public class ScoredArtist : Artist, IScoredItem
         {
-            public double score { get; set; }
-            public required string resultType { get; set; }
+            public double Score { get; set; }
+            public required string ResultType { get; set; }
         }
 
         // Base models with lowercase properties
         public class MusicTrack
         {
-            public string id { get; set; } = string.Empty;
-            public string title { get; set; } = string.Empty;
-            public string titleLower { get; set; } = string.Empty;
-            public string artistId { get; set; } = string.Empty;
-            public string albumId { get; set; } = string.Empty;
-            public int duration { get; set; }
-            public string? uploaderId { get; set; }
-            public DateTime uploadedAt { get; set; }
-            public int timesPlayed { get; set; }
+            public string Id { get; set; } = string.Empty;
+            public string Title { get; set; } = string.Empty;
+            public string TitleLower { get; set; } = string.Empty;
+            public string ArtistId { get; set; } = string.Empty;
+            public string AlbumId { get; set; } = string.Empty;
+            public int Duration { get; set; }
+            public string? UploaderId { get; set; }
+            public DateTime UploadedAt { get; set; }
+            public int TimesPlayed { get; set; }
             public MusicMetadata? MusicMetadata { get; set; }
             public List<MusicFile> MusicFile { get; set; } = new List<MusicFile>();
-            public List<MusicFile> files { get; set; } = new List<MusicFile>();
-            public Artist artist { get; set; } = new Artist();
-            public Album album { get; set; } = new Album();
-            public User? uploader { get; set; }
+            public List<MusicFile> Files { get; set; } = new List<MusicFile>();
+            public Artist Artist { get; set; } = new Artist();
+            public Album Album { get; set; } = new Album();
+            public User? Uploader { get; set; }
             public List<MusicErrors> MusicErrors { get; set; } = new List<MusicErrors>();
             public List<MusicAnalytics> MusicAnalytics { get; set; } = new List<MusicAnalytics>();
         }
 
         public class MusicMetadata
         {
-            public string musicId { get; set; } = string.Empty;
-            public string? coverArtId { get; set; }
-            public MusicFile? coverArt { get; set; }
-            public string? publisher { get; set; }
-            public string? genre { get; set; }
-            public int? year { get; set; }
-            public int? trackNumber { get; set; }
-            public string? discNumber { get; set; }
-            public string? composer { get; set; }
-            public string? lyricist { get; set; }
-            public string? conductor { get; set; }
-            public string? remixer { get; set; }
-            public int? bpm { get; set; }
-            public string? key { get; set; }
-            public string? language { get; set; }
-            public string? copyright { get; set; }
-            public string? license { get; set; }
-            public string? isrc { get; set; }
-            public string? encodedBy { get; set; }
-            public string? encoderSoftware { get; set; }
-            public int? bitrate { get; set; }
-            public int? sampleRate { get; set; }
-            public int? channels { get; set; }
+            public string MusicId { get; set; } = string.Empty;
+            public string? CoverArtId { get; set; }
+            public MusicFile? CoverArt { get; set; }
+            public string? Publisher { get; set; }
+            public string? Genre { get; set; }
+            public int? Year { get; set; }
+            public int? TrackNumber { get; set; }
+            public string? DiscNumber { get; set; }
+            public string? Composer { get; set; }
+            public string? Lyricist { get; set; }
+            public string? Conductor { get; set; }
+            public string? Remixer { get; set; }
+            public int? Bpm { get; set; }
+            public string? Key { get; set; }
+            public string? Language { get; set; }
+            public string? Copyright { get; set; }
+            public string? License { get; set; }
+            public string? Isrc { get; set; }
+            public string? EncodedBy { get; set; }
+            public string? EncoderSoftware { get; set; }
+            public int? Bitrate { get; set; }
+            public int? SampleRate { get; set; }
+            public int? Channels { get; set; }
         }
 
         public class MusicFile
         {
-            public string id { get; set; } = string.Empty;
-            public string? musicId { get; set; }
-            public string filePath { get; set; } = string.Empty;
-            public long fileSize { get; set; }
-            public string fileHash { get; set; } = string.Empty;
-            public string type { get; set; } = string.Empty;
-            public string name { get; set; } = string.Empty;
-            public bool exists { get; set; }
-            public string? ownerId { get; set; }
-            public User? owner { get; set; }
-            public DateTime createdAt { get; set; }
-            public DateTime? updatedAt { get; set; }
+            public string Id { get; set; } = string.Empty;
+            public string? MusicId { get; set; }
+            public string FilePath { get; set; } = string.Empty;
+            public string FileWebPath { get; set; } = string.Empty;
+            public long FileSize { get; set; }
+            public string FileHash { get; set; } = string.Empty;
+            public string Type { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public bool Exists { get; set; }
+            public string? OwnerId { get; set; }
+            public User? Owner { get; set; }
+            public DateTime CreatedAt { get; set; }
+            public DateTime? UpdatedAt { get; set; }
         }
 
         public class Album
         {
-            public string id { get; set; } = string.Empty;
-            public string name { get; set; } = string.Empty;
-            public string nameLower { get; set; } = string.Empty;
-            public DateTime createdAt { get; set; }
-            public DateTime updatedAt { get; set; }
-            public string? coverArtId { get; set; }
-            public List<MusicFile> coverArt { get; set; } = new List<MusicFile>();
-            public string? primaryOwnerId { get; set; }
-            public User? primaryOwnedAlbums { get; set; }
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public string NameLower { get; set; } = string.Empty;
+            public DateTime CreatedAt { get; set; }
+            public DateTime UpdatedAt { get; set; }
+            public string? CoverArtId { get; set; }
+            public List<MusicFile> CoverArt { get; set; } = new List<MusicFile>();
+            public string? PrimaryOwnerId { get; set; }
+            public User? PrimaryOwnedAlbums { get; set; }
             public List<User> Owners { get; set; } = new List<User>();
             public List<Artist> Artists { get; set; } = new List<Artist>();
             public List<MusicTrack> Music { get; set; } = new List<MusicTrack>();
@@ -129,11 +130,11 @@ namespace PPMusicBot.Models
 
         public class Artist
         {
-            public string id { get; set; } = string.Empty;
-            public string name { get; set; } = string.Empty;
-            public string nameLower { get; set; } = string.Empty;
-            public DateTime createdAt { get; set; }
-            public DateTime updatedAt { get; set; }
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public string NameLower { get; set; } = string.Empty;
+            public DateTime CreatedAt { get; set; }
+            public DateTime UpdatedAt { get; set; }
             public List<Album>? Albums { get; set; }
             public List<MusicTrack>? Music { get; set; }
         }
