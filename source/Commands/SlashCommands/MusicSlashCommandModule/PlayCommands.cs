@@ -227,7 +227,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     return;
                 }
 
-                await PlayDatabaseTracks(player, result);
+                await PlayDatabaseTracks(player, result, playAllTracks: true);
             }
             catch (Exception ex)
             {
@@ -235,8 +235,9 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 throw;
             }
         }
-        private async Task PlayDatabaseTracks(VoteLavalinkPlayer player, KenobiAPISearchResult result, int wantedTrackIndex = 0, int wantedAlbumIndex = 0, bool doModifyOriginalResponse = false, bool shuffle = false)
+        private async Task PlayDatabaseTracks(VoteLavalinkPlayer player, KenobiAPISearchResult result, int wantedTrackIndex = 0, int wantedAlbumIndex = 0, bool doModifyOriginalResponse = false, bool shuffle = false, bool playAllTracks = false)
         {
+            _logger.LogInformation($"Playing ${result.Tracks.Count} tracks and ${result.Albums.Count} from database.");
             if (result.Tracks.Count > 0 && result.Albums.Count == 0)
             {
                 var tracks = await _audioService.Tracks.LoadTracksAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString, TrackSearchMode.None);
@@ -246,12 +247,23 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     await FollowupAsync("Lavalink could not load the track.");
                     return;
                 }
-                result.Tracks = [result.Tracks[wantedTrackIndex]];
+                if (!playAllTracks)
+                    result.Tracks = [result.Tracks[wantedTrackIndex]];
                 if (shuffle)
                 {
                     result.Tracks = result.Tracks.Shuffle().ToList();
                 }
                 var position = await player.PlayAsync(new CustomQueueTrackItem(tracks.Track, result.Tracks[0])).ConfigureAwait(false);
+
+                if (playAllTracks)
+                {
+                    foreach (var track in result.Tracks[1..])
+                    {
+                        var loaded = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(track).OriginalString, TrackSearchMode.None);
+                        if (loaded is null) { continue; }
+                        await player.PlayAsync(new CustomQueueTrackItem(loaded, track)).ConfigureAwait(false);
+                    }
+                }
 
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(position, tracks, result, null)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
