@@ -202,6 +202,39 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 throw;
             }
         }
+        [SlashCommand("fromdbrandom", description: "Plays random music from database only.", runMode: RunMode.Async)]
+        public async Task PlayRandomFromDbAsync(
+            [Summary("amount", "Amount of tracks to be queried.")]
+            [MinValue(1)]
+            [MaxValue(100)]
+            int amount
+            )
+        {
+            try
+            {
+                await DeferAsync().ConfigureAwait(false);
+
+                var player = await GetPlayerAsync(connectToVoiceChannel: true).ConfigureAwait(false);
+
+                if (player is null)
+                    return;
+
+                var result = await _kenobiAPISearchEngineService.SearchRandom(amount).ConfigureAwait(false);
+
+                if (result is null)
+                {
+                    await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
+                    return;
+                }
+
+                await PlayDatabaseTracks(player, result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                throw;
+            }
+        }
         private async Task PlayDatabaseTracks(VoteLavalinkPlayer player, KenobiAPISearchResult result, int wantedTrackIndex = 0, int wantedAlbumIndex = 0, bool doModifyOriginalResponse = false, bool shuffle = false)
         {
             if (result.Tracks.Count > 0 && result.Albums.Count == 0)

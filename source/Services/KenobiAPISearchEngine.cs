@@ -1,7 +1,10 @@
-﻿using Newtonsoft.Json;
-using System.Text;
-using PPMusicBot.Models;
+﻿using Microsoft.Extensions.Options;
+using Microsoft.VisualBasic;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using PPMusicBot.Classes;
+using PPMusicBot.Models;
+using System.Text;
 
 namespace PPMusicBot.Services
 {
@@ -74,6 +77,32 @@ namespace PPMusicBot.Services
                 _logger.LogError($"Could not parse API response. {ex.Message} {ex.StackTrace}");
                 return null;
             }
+        }
+
+        public async Task<KenobiAPISearchResult?> SearchRandom(int amount)
+        {
+            if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount > 100) throw new ArgumentOutOfRangeException(nameof(amount));
+            var url = _baseAddress + $"music?SortBy=Random&Limit={amount}";
+            HttpResponseMessage? response = await _httpClient.GetAsync(url) ?? throw new Exception("Response is null");
+            response.EnsureSuccessStatusCode();
+            var options = new JsonSerializerSettings()
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
+            var parsedData = JsonConvert.DeserializeObject<KenobiAPIModels.ApiResponseDto<List<KenobiAPIModels.MusicTrack>>>(await response.Content.ReadAsStringAsync(), options);
+
+            if (parsedData != null && parsedData.data != null)
+            {
+                List<KenobiAPIModels.ScoredTrack> tracks = parsedData.data.ToScoredTrack();
+                return new KenobiAPISearchResult(tracks, []);
+            }
+            else
+            {
+                _logger.LogWarning("Response is null or nothing was found.");
+                return null;
+            }
+
         }
         public Uri GetTrackUriFromTrackObject(KenobiAPIModels.MusicTrack track)
         {
