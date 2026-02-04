@@ -20,10 +20,7 @@ public class BotWorker : BackgroundService
     {
         try
         {
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Initialized! Starting Bot Service...");
-            }
+            _logger.LogInformation("Initialized! Starting Bot Service...");
 
             _applicationLifetime.ApplicationStopping.Register(() =>
             {
@@ -32,26 +29,29 @@ public class BotWorker : BackgroundService
 
             await _botService.StartAsync(stoppingToken);
 
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                await Task.Delay(1000, stoppingToken);
-            }
+            await Task.Delay(Timeout.Infinite, stoppingToken);
         }
-        catch (Exception ex)
+        catch (TaskCanceledException)
         {
-            _logger.LogError(ex, "BotWorker encountered an error");
-            throw;
+            _logger.LogInformation("BotWorker execution cancelled");
         }
-        finally
+        catch
         {
-            _logger.LogInformation($"{nameof(BotWorker)} was shutdown.");
+            await StopAsync(stoppingToken);
         }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("BotWorker stop requested");
-        await _botService.StopAsync();
-        await base.StopAsync(cancellationToken);
+
+        try
+        {
+            await _botService.StopAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping BotService");
+        }
     }
 }

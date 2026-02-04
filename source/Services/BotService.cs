@@ -25,6 +25,7 @@ namespace PPMusicBot.Services
         private readonly MusicService _musicService;
         private readonly DatabaseService _databaseService;
         private readonly IHostApplicationLifetime _applicationLifetime;
+
         public BotService(
             ILogger<BotService> logger,
             IConfiguration configuration,
@@ -55,14 +56,22 @@ namespace PPMusicBot.Services
             {
                 _logger.LogInformation("Bot service is starting!");
             }
-
-            SetupEventHandlers();
-            await _databaseService.StartAsync(cancellationToken);
-            await _botClient.LoginAsync(TokenType.Bot, _configuration["Bot:Token"]);
-            await _botClient.StartAsync();
+            try
+            {
+                await _databaseService.StartAsync(cancellationToken);
+                SetupEventHandlers();
+                await _botClient.LoginAsync(TokenType.Bot, _configuration["Bot:Token"]);
+                await _botClient.StartAsync();
+                _logger.LogInformation("Bot service started successfully!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex, "BotService failed to start");
+                throw;
+            }
         }
 
-        public async Task StopAsync()
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             if (_logger.IsEnabled(LogLevel.Information))
             {
@@ -71,6 +80,7 @@ namespace PPMusicBot.Services
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // Disconnect all players and inform users.
                 if (_audioService.Players.Players.Any())
                 {
@@ -95,7 +105,7 @@ namespace PPMusicBot.Services
                                         }
                                     }
                                 }
-                                await player.DisconnectAsync();
+                                await player.DisconnectAsync(cancellationToken);
                             }
                             catch (Exception ex)
                             {
@@ -106,17 +116,61 @@ namespace PPMusicBot.Services
                     await Task.WhenAll(disconnectTasks);
                 }
 
-                await _audioService.StopAsync();
-                await _inactivityTrackingService.StopAsync();
-                await _botClient.StopAsync();
-                await _databaseService.StopAsync();
-                await _botClient.LogoutAsync();
+                DisconnectEventHandlers();
+
+                try
+                {
+                    await _inactivityTrackingService.StopAsync(cancellationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogWarning("Inactivity tracking service was not started or already stopped.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error stopping inactivity tracking service");
+                }
+                try
+                {
+                    await _audioService.StopAsync(cancellationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogWarning("Audio service was not started or already stopped.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error stopping audio service");
+                }
+                try
+                {
+                    await _databaseService.StopAsync();
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogWarning("Database service was not started or already stopped.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error stopping database service");
+                }
+                if (_botClient.LoginState == LoginState.LoggedIn || _botClient.ConnectionState == ConnectionState.Connected)
+                {
+                    await _botClient.StopAsync();
+                    await _botClient.LogoutAsync();
+                }
 
                 _logger.LogInformation("Bot Service shutdown completed.");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Bot Service shutdown was cancelled");
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during graceful shutdown");
+                throw;
             }
         }
 
@@ -133,6 +187,20 @@ namespace PPMusicBot.Services
             _audioService.DiscordClient.VoiceStateUpdated += OnVoiceStateUpdated;
             _audioService.DiscordClient.VoiceServerUpdated += OnVoiceServerUpdated;
             _inactivityTrackingService.PlayerInactive += OnPlayerInactive;
+        }
+        private void DisconnectEventHandlers()
+        {
+            _botClient.Log -= LogWrapper;
+            _botClient.Ready -= OnReady;
+            _botClient.InteractionCreated -= OnInteractionCreated;
+            _interactionService.InteractionExecuted -= OnInteractionExecuted;
+            _audioService.Players.PlayerCreated -= OnPlayerCreated;
+            _audioService.TrackStuck -= OnTrackStuck;
+            _audioService.TrackException -= OnTrackException;
+            _audioService.TrackEnded -= OnTrackEnded;
+            _audioService.DiscordClient.VoiceStateUpdated -= OnVoiceStateUpdated;
+            _audioService.DiscordClient.VoiceServerUpdated -= OnVoiceServerUpdated;
+            _inactivityTrackingService.PlayerInactive -= OnPlayerInactive;
         }
 
         private async Task OnPlayerInactive(object sender, Lavalink4NET.InactivityTracking.Events.PlayerInactiveEventArgs eventArgs)
