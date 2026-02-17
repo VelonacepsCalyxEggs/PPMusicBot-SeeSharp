@@ -43,6 +43,8 @@ try
 
     Log.Logger = loggerConfiguration.CreateLogger();
     builder.Services.AddSerilog();
+    Log.Information($"Current Directory: {Directory.GetCurrentDirectory()}");
+    Log.Information($"Environment: {Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")}");
 
     builder.Services.AddSingleton<DiscordSocketClient>(provider =>
     {
