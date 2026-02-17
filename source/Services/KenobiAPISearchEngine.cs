@@ -42,7 +42,7 @@ namespace PPMusicBot.Services
         public async Task<KenobiAPISearchResult?> Search(string query, ulong interactionId)
         {
             var url = _baseAddress + "music/search";
-            string jsonString = JsonConvert.SerializeObject(new { query });
+            string jsonString = JsonConvert.SerializeObject(new { query }); // add parameters to disable album/track search.
             HttpContent content = new StringContent(jsonString, Encoding.UTF8, "application/json");
 
             HttpResponseMessage? response = await _httpClient.PostAsync(url, content) ?? throw new Exception("Response is null");

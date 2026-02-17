@@ -127,8 +127,20 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 throw;
             }
         }
+        public enum SearchType
+        {
+            [ChoiceDisplay("Any")]
+            Any,
+            [ChoiceDisplay("Tracks")]
+            Tracks,
+            [ChoiceDisplay("Albums")]
+            Albums
+        }
         [SlashCommand("fromdb", description: "Plays music from database only.", runMode: RunMode.Async)]
-        public async Task PlayFromDbAsync(string query, bool shuffle = false)
+        public async Task PlayFromDbAsync(
+            string query,
+            SearchType searchType = SearchType.Tracks,
+            bool shuffle = false)
         {
             try
             {
@@ -158,7 +170,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     StringBuilder sb = new StringBuilder();
                     sb.AppendLine("Maybe you meant:");
 
-                    if (result.Tracks.Count > 0)
+                    if (result.Tracks.Count > 0 && searchType == SearchType.Tracks || searchType == SearchType.Any)
                     {
                         sb.AppendLine("**Tracks:**");
                         var trackCount = Math.Min(result.Tracks.Count, 15);
@@ -169,7 +181,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         }
                     }
 
-                    if (result.Albums.Count > 0 && menuBuilder.Options.Count < 25)
+                    if (result.Albums.Count > 0 && menuBuilder.Options.Count < 25 && searchType == SearchType.Albums || searchType == SearchType.Any)
                     {
                         sb.AppendLine("**Albums:**");
                         var remainingSlots = 25 - menuBuilder.Options.Count;
@@ -194,7 +206,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     return;
                 }
 
-                await PlayDatabaseTracks(player, result, shuffle: shuffle);
+                await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
             }
             catch (Exception ex)
             {
@@ -235,10 +247,19 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 throw;
             }
         }
-        private async Task PlayDatabaseTracks(VoteLavalinkPlayer player, KenobiAPISearchResult result, int wantedTrackIndex = 0, int wantedAlbumIndex = 0, bool doModifyOriginalResponse = false, bool shuffle = false, bool playAllTracks = false)
+        private async Task PlayDatabaseTracks(
+            VoteLavalinkPlayer player, 
+            KenobiAPISearchResult result, 
+            int wantedTrackIndex = 0, 
+            int wantedAlbumIndex = 0, 
+            bool doModifyOriginalResponse = false, 
+            bool shuffle = false, 
+            SearchType searchType = SearchType.Any,
+            bool playAllTracks = false)
         {
             _logger.LogInformation($"Playing ${result.Tracks.Count} tracks and ${result.Albums.Count} from database.");
-            if (result.Tracks.Count > 0 && result.Albums.Count == 0)
+            if (result.Tracks.Count > 0 && result.Albums.Count == 0 
+                && searchType == SearchType.Tracks || searchType == SearchType.Any)
             {
                 var tracks = await _audioService.Tracks.LoadTracksAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString, TrackSearchMode.None);
 
@@ -272,13 +293,13 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
             }
-            else if (result.Albums.Count() > 0)
+            else if (result.Albums.Count > 0 && searchType == SearchType.Albums || searchType == SearchType.Any)
             {
                 if (wantedAlbumIndex != 0)
                 {
                     result.Albums = [result.Albums[wantedAlbumIndex]];
                 }
-                if (result.Albums[0].Music.Count() == 0)
+                if (result.Albums[0].Music.Count == 0)
                 {
                     result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].Id);
                 }
@@ -310,7 +331,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             }
             else
             {
-                throw new ArgumentNullException(nameof(result));
+                await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in the database.");
             }
         }
 
