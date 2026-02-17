@@ -41,7 +41,7 @@ namespace PPMusicBot.Helpers
                         Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].Album.Name)}**",
                         Footer = new EmbedFooterBuilder()
                         {
-                            Text = $" Duration: {durationText} | Position: {position}"
+                            Text = $" Duration: {durationText} | Position: {position + 1}"
                         },
                         ImageUrl = result is null
                             ? (await BuildImageUrlAsync(artworkService, track))
@@ -63,7 +63,7 @@ namespace PPMusicBot.Helpers
                     {
                         Title = position is 0 ? "Playing:" : "Added to queue:",
                         Description = $"**{lavalinkResult.Value.Playlist.Name}** with {lavalinkResult.Value.Tracks.Length} tracks.",
-                        Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalPlaylistDuration:hh\\:mm\\:ss} | From position: {position} to {position + lavalinkResult.Value.Tracks.Length - 1}" },
+                        Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalPlaylistDuration:hh\\:mm\\:ss} | From position: {position + 1} to {position + 1 + lavalinkResult.Value.Tracks.Length - 1}" },
                         ImageUrl = await BuildImageUrlAsync(artworkService, lavalinkResult.Value.Track)
 
                     }.Build();
@@ -84,7 +84,7 @@ namespace PPMusicBot.Helpers
                 {
                     Title = position is 0 ? "Playing:" : "Added to queue:",
                     Description = $"**{result.Albums[0].Name}** with {result.Albums[0].Music.Count} tracks.",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {position} to {position + result.Albums[0].Music.Count - 1}" },
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {position + 1} to {position + 1 + result.Albums[0].Music.Count - 1}" },
                     ImageUrl = Helpers.GetKenobiApiImagePreview(result: result).OriginalString
 
                 }.Build();
