@@ -163,15 +163,22 @@ namespace PPMusicBot.Helpers
                     sb.AppendLine($"{i + 1}. {customData?.MusicTrack.Title} by {customData?.MusicTrack.Artist.Name}");
                 else
                     sb.AppendLine($"{i + 1}. {track.Track?.Title} by {track.Track?.Author}");
+                if (customData != null)
+                    pageTotalTime += new TimeSpan(0, 0, customData.MusicTrack.Duration);
+                else
+                    pageTotalTime += track.Track?.Duration ?? new TimeSpan();
 
-                pageTotalTime += (track.Track?.Duration ?? new TimeSpan());
             }
 
             // This could be expensive... but I likey...
             var totalTime = new TimeSpan();
             for (int i = 0; i < totalTracks; i++)
             {
-                totalTime += (player.Queue[i].Track?.Duration ?? new TimeSpan());
+                var customData = PlayerExtensions.GetCustomData(player.Queue[i]);
+                if (customData != null)
+                    totalTime += new TimeSpan(0, 0, customData.MusicTrack.Duration);
+                else
+                    totalTime += (player.Queue[i].Track?.Duration ?? new TimeSpan());
             }
 
             var embed = new EmbedBuilder()
