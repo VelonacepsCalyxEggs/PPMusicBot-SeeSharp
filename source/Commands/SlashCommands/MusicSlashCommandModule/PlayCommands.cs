@@ -170,7 +170,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     StringBuilder sb = new StringBuilder();
                     sb.AppendLine("Maybe you meant:");
 
-                    if (result.Tracks.Count > 0 && searchType == SearchType.Tracks || searchType == SearchType.Any)
+                    if (result.Tracks.Count > 0)
                     {
                         sb.AppendLine("**Tracks:**");
                         var trackCount = Math.Min(result.Tracks.Count, 15);
@@ -181,7 +181,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         }
                     }
 
-                    if (result.Albums.Count > 0 && menuBuilder.Options.Count < 25 && searchType == SearchType.Albums || searchType == SearchType.Any)
+                    if (result.Albums.Count > 0 && menuBuilder.Options.Count < 25)
                     {
                         sb.AppendLine("**Albums:**");
                         var remainingSlots = 25 - menuBuilder.Options.Count;
@@ -257,9 +257,9 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             SearchType searchType = SearchType.Any,
             bool playAllTracks = false)
         {
-            _logger.LogInformation($"Playing ${result.Tracks.Count} tracks and ${result.Albums.Count} from database.");
-            if (result.Tracks.Count > 0 && result.Albums.Count == 0 
-                && searchType == SearchType.Tracks || searchType == SearchType.Any)
+            _logger.LogInformation($"Playing {result.Tracks.Count()} tracks and {result.Albums.Count()} albums from database.");
+            if ((result.Tracks.Count() > 0 && result.Albums.Count() == 0) 
+                && (searchType == SearchType.Tracks || searchType == SearchType.Any))
             {
                 var tracks = await _audioService.Tracks.LoadTracksAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString, TrackSearchMode.None);
                 if (tracks.Track is null)
@@ -292,13 +292,13 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
             }
-            else if (result.Albums.Count > 0 && searchType == SearchType.Albums || searchType == SearchType.Any)
+            else if (result.Albums.Count() > 0 && (searchType == SearchType.Albums || searchType == SearchType.Any))
             {
                 if (wantedAlbumIndex != 0)
                 {
                     result.Albums = [result.Albums[wantedAlbumIndex]];
                 }
-                if (result.Albums[0].Music.Count == 0)
+                if (result.Albums[0].Music.Count() == 0)
                 {
                     result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].Id);
                 }
@@ -306,7 +306,6 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 {
                     result.Albums[0].Music = result.Albums[0].Music.Shuffle().ToList();
                 }
-
                 var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]).OriginalString, TrackSearchMode.None);
                 if (firstToPlay is null)
                 {
