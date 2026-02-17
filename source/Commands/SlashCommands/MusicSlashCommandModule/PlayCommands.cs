@@ -161,6 +161,27 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 
                 if (result.Suggestion)
                 {
+                    // REMOVE THIS LATER!!!
+                    // NEEDS BACKEND CHANGES.
+                    // IF NOT REMOVED IN 1 MONTH ADMINISTER BROMINE HEXAFLUORIDE TO REPOSITORY OWNER
+                    if (searchType == SearchType.Tracks)
+                    {
+                        result.Albums.Clear();
+                        if (result.Tracks.Count() < 2 && result.Tracks.Count() > 0)
+                        {
+                            await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
+                            return;
+                        }
+                    }
+                    else if (searchType == SearchType.Albums)
+                    {
+                        result.Tracks.Clear();
+                        if (result.Albums.Count() < 2 && result.Albums.Count() > 0)
+                        {
+                            await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
+                            return;
+                        }
+                    }
                     var menuBuilder = new SelectMenuBuilder()
                         .WithPlaceholder("Select an option")
                         .WithCustomId($"suggestion_selector:{Context.Interaction.Id}")
