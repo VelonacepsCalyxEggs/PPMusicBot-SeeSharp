@@ -129,36 +129,44 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         [SlashCommand("queue", description: "Shows the tracks in the queue.", runMode: RunMode.Async)]
         public async Task QueueAsync(int page = 0)
         {
-            var player = await GetPlayerAsync(connectToVoiceChannel: false);
-
-            if (player is null)
+            try
             {
-                return;
+                var player = await GetPlayerAsync(connectToVoiceChannel: false);
+
+                if (player is null)
+                {
+                    return;
+                }
+
+                if (player.Queue.IsEmpty)
+                {
+                    await RespondAsync("The queue is empty.", ephemeral: true).ConfigureAwait(false);
+                    return;
+                }
+
+                // queue state for pagination
+                var queueState = new QueueState
+                {
+                    GuildId = Context.Guild.Id,
+                    CurrentPage = page,
+                    LastUpdated = DateTime.UtcNow
+                };
+
+                var (embed, components) = BuildQueueEmbed(player, queueState.CurrentPage);
+
+                if (embed.Description.Length > 4096) // I think the limit was 4096??  Well it didn't crash yet.
+                {
+                    await RespondAsync("The queue is too long to display.").ConfigureAwait(false);
+                    return;
+                }
+
+                await RespondAsync(embed: embed, components: components).ConfigureAwait(false);
             }
-
-            if (player.Queue.IsEmpty)
+            catch (Exception ex)
             {
-                await RespondAsync("The queue is empty.", ephemeral: true).ConfigureAwait(false);
-                return;
+                _logger.LogError(ex, ex.Message);
+                throw;
             }
-
-            // queue state for pagination
-            var queueState = new QueueState
-            {
-                GuildId = Context.Guild.Id,
-                CurrentPage = page,
-                LastUpdated = DateTime.UtcNow
-            };
-
-            var (embed, components) = BuildQueueEmbed(player, queueState.CurrentPage);
-
-            if (embed.Description.Length > 4096) // I think the limit was 4096??  Well it didn't crash yet.
-            {
-                await RespondAsync("The queue is too long to display.").ConfigureAwait(false);
-                return;
-            }
-
-            await RespondAsync(embed: embed, components: components).ConfigureAwait(false);
         }
 
         // I am not sure if these should be here tbh
