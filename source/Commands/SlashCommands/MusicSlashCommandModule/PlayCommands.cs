@@ -282,7 +282,9 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             if ((result.Tracks.Count() > 0 && result.Albums.Count() == 0) 
                 && (searchType == SearchType.Tracks || searchType == SearchType.Any))
             {
-                var tracks = await _audioService.Tracks.LoadTracksAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString, TrackSearchMode.None);
+                var trackURL = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString;
+                _logger.LogDebug($"Loading from URL: {trackURL}");
+                var tracks = await _audioService.Tracks.LoadTracksAsync(trackURL, TrackSearchMode.None);
                 if (tracks.Track is null)
                 {
                     await FollowupAsync("Lavalink could not load the track.");
