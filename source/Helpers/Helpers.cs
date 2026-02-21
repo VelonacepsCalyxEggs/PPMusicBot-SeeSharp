@@ -32,13 +32,15 @@ namespace PPMusicBot.Helpers
                         finalDuration = lavalinkResult.Value.Track.Duration;
                     }
 
+                    bool resultExists = result != null;
+
                     bool isActuallyLive = (result == null && track.IsLiveStream); // Having to jump through hoops because backend serves music in chunked mode.
                     string durationText = isActuallyLive ? "∞" : finalDuration.ToString(@"mm\:ss");
 
                     return new EmbedBuilder()
                     {
                         Title = position is 0 ? "Playing:" : "Added to queue:",
-                        Description = $"**{track.Title}** by **{track.Author}** from **{(result is null ? track.Uri : result.Tracks[0].Album.Name)}**",
+                        Description = $"**{(resultExists ? result!.Tracks[0].Title : track.Title)}** by **{(resultExists ? result!.Tracks[0].Artist.Name : track.Author)}** from **{(resultExists ? result!.Tracks[0].Album.Name : track.Uri)}**",
                         Footer = new EmbedFooterBuilder()
                         {
                             Text = $" Duration: {durationText} | Position: {position + 1}"
