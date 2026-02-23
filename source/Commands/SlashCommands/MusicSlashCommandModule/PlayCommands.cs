@@ -139,7 +139,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         [SlashCommand("fromdb", description: "Plays music from database only.", runMode: RunMode.Async)]
         public async Task PlayFromDbAsync(
             string query,
-            SearchType searchType = SearchType.Tracks,
+            SearchType searchType = SearchType.Any,
             bool shuffle = false)
         {
             try
