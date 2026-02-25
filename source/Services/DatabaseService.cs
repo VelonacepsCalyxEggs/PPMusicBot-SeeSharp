@@ -13,8 +13,15 @@ namespace PPMusicBot.Services
         private const int MaxRetries = 5;
         private const int BatchInsertCount = 10;
         private List<VoiceChannelData> voiceChannelDatas = new List<VoiceChannelData>();
+        private bool _isEnabled = false;
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            _isEnabled = _configuration["Database:IsEnabled"] == "true";
+            if (!_isEnabled)
+            {
+                _logger.LogWarning("Database service is not enabled.");
+                return;
+            }
             if (_logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation("Database service is starting!");
@@ -33,9 +40,9 @@ namespace PPMusicBot.Services
 
         public async Task StopAsync()
         {
-            if (_logger.IsEnabled(LogLevel.Information))
+            if (!_isEnabled)
             {
-                _logger.LogInformation("Initiating Bot Service graceful shutdown...");
+                return;
             }
             if (voiceChannelDatas.Count > 0)
             {
@@ -79,6 +86,10 @@ namespace PPMusicBot.Services
         }
         public async Task RecordVoiceChannelData(ulong userId, ulong? oldChannelId, ulong? newChannelId, ulong guildId, DateTime eventTimestamp)
         {
+            if (!_isEnabled)
+            {
+                return;
+            }
             VoiceChannelData voiceChannelData = new VoiceChannelData()
             {
                 UserId = userId,
