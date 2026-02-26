@@ -157,11 +157,10 @@ namespace PPMusicBot.Services
         {
             foreach (var item in items)
             {
-                if (item.Score == highScorePrimary || item.Score == highScoreSecondary) return false;
+                if (item.Score == highScorePrimary || item.Score == highScoreSecondary)
+                    return false;
             }
-            if (highScorePrimary >= HIGH_THRESHHOLD) return true;
-            if (highScorePrimary < LOW_THRESHHOLD) return false;
-            else return true;
+            return highScorePrimary >= HIGH_THRESHHOLD;
         }
 
         public async Task<List<KenobiAPIModels.MusicTrack>> RequestAlbumSongsAsync(string albumId)

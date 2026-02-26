@@ -6,6 +6,7 @@ using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
+using System.Diagnostics.Eventing.Reader;
 using System.Text;
 using static PPMusicBot.Helpers.Helpers;
 namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
@@ -158,30 +159,47 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
                     return;
                 }
-
+                // REMOVE THIS LATER!!!
+                // NEEDS BACKEND CHANGES.
+                // IF NOT REMOVED IN 1 MONTH ADMINISTER BROMINE HEXAFLUORIDE TO REPOSITORY OWNER
+                if (searchType == SearchType.Tracks)
+                {
+                    result.Albums.Clear();
+                    if (result.Tracks.Count() == 1)
+                    {
+                        await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
+                        return;
+                    }
+                    else if (result.Tracks.Count() != 0)
+                    {
+                        result.Suggestion = true;
+                    }
+                    else
+                    {
+                        await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in DB.");
+                        return;
+                    }
+                }
+                else if (searchType == SearchType.Albums)
+                {
+                    result.Tracks.Clear();
+                    if (result.Albums.Count() == 1)
+                    {
+                        await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
+                        return;
+                    }
+                    else if (result.Albums.Count() != 0)
+                    {
+                        result.Suggestion = true;
+                    }
+                    else
+                    {
+                        await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in DB.");
+                        return;
+                    }
+                }
                 if (result.Suggestion)
                 {
-                    // REMOVE THIS LATER!!!
-                    // NEEDS BACKEND CHANGES.
-                    // IF NOT REMOVED IN 1 MONTH ADMINISTER BROMINE HEXAFLUORIDE TO REPOSITORY OWNER
-                    if (searchType == SearchType.Tracks)
-                    {
-                        result.Albums.Clear();
-                        if (result.Tracks.Count() < 2 && result.Tracks.Count() > 0)
-                        {
-                            await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
-                            return;
-                        }
-                    }
-                    else if (searchType == SearchType.Albums)
-                    {
-                        result.Tracks.Clear();
-                        if (result.Albums.Count() < 2 && result.Albums.Count() > 0)
-                        {
-                            await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
-                            return;
-                        }
-                    }
                     var menuBuilder = new SelectMenuBuilder()
                         .WithPlaceholder("Select an option")
                         .WithCustomId($"suggestion_selector:{Context.Interaction.Id}")
