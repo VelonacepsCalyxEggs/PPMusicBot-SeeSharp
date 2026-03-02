@@ -5,6 +5,7 @@ using Newtonsoft.Json.Serialization;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
 using System.Text;
+using static PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule.MusicSlashCommandModule;
 
 namespace PPMusicBot.Services
 {
@@ -39,7 +40,7 @@ namespace PPMusicBot.Services
             HIGH_THRESHHOLD = highThreshhold;
             MAX_SUGGESTIONS = maxSuggestions;
         }
-        public async Task<KenobiAPISearchResult?> Search(string query, ulong interactionId)
+        public async Task<KenobiAPISearchResult?> Search(string query, ulong interactionId, SearchType searchType)
         {
             var url = _baseAddress + "music/search";
             string jsonString = JsonConvert.SerializeObject(new { query }); // add parameters to disable album/track search.
@@ -58,7 +59,7 @@ namespace PPMusicBot.Services
 
                 if (parsedData != null)
                 {
-                    var parsedResponse = await CalculateResponseAsync(parsedData);
+                    var parsedResponse = await CalculateResponseAsync(parsedData, searchType);
                     if (parsedResponse is not null && parsedResponse.Suggestion)
                     {
                         SuggestionCache.Add(interactionId, (parsedResponse, DateTime.UtcNow));
@@ -109,7 +110,7 @@ namespace PPMusicBot.Services
             return new Uri(_baseAddress + $"file/createMusicStream/{track.MusicFile[0].Id}");
         }
 
-        private async Task<KenobiAPISearchResult?> CalculateResponseAsync(KenobiAPIModels.SearchResultsDto searchResults)
+        private async Task<KenobiAPISearchResult?> CalculateResponseAsync(KenobiAPIModels.SearchResultsDto searchResults, SearchType searchType = SearchType.Any)
         {
             double highestScoreTrack = 0;
             double highestScoreAlbum = 0;
@@ -127,14 +128,14 @@ namespace PPMusicBot.Services
             if (highestScoreAlbum == highestScoreTrack) 
                 return new KenobiAPISearchResult(searchResults.Tracks.Slice(0, Math.Min(searchResults.Tracks.Count, MAX_SUGGESTIONS)), searchResults.Albums.Slice(0, Math.Min(searchResults.Albums.Count, MAX_SUGGESTIONS)), true);
 
-            if (highestScoreTrack != 0 && highestScoreTrack > highestScoreAlbum)
+            if (highestScoreTrack != 0 && highestScoreTrack > highestScoreAlbum && searchType == SearchType.Tracks || searchType == SearchType.Any)
             {
                 var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredTrack>(slicedTracks, highestScoreTrack, highestScoreAlbum);
 
                 if (resultState == true) return new KenobiAPISearchResult(searchResults.Tracks[..1], []);
                 else return new KenobiAPISearchResult(searchResults.Tracks.Slice(0, Math.Min(searchResults.Tracks.Count, MAX_SUGGESTIONS)), searchResults.Albums.Slice(0, Math.Min(searchResults.Albums.Count, MAX_SUGGESTIONS)), true);
                 }
-            else if (highestScoreAlbum != 0)
+            else if (highestScoreAlbum != 0 && searchType == SearchType.Albums || searchType == SearchType.Any)
             {
                 var resultState = DetermineSearchResultState<KenobiAPIModels.ScoredAlbum>(slicedAlbums, highestScoreAlbum, highestScoreTrack);
 

@@ -152,13 +152,17 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 if (player is null)
                     return;
 
-                var result = await _kenobiAPISearchEngineService.Search(query, Context.Interaction.Id).ConfigureAwait(false);
+                var result = await _kenobiAPISearchEngineService.Search(query, Context.Interaction.Id, searchType).ConfigureAwait(false);
 
                 if (result is null)
                 {
                     await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
                     return;
                 }
+                _logger.LogDebug("RESULT:");
+                _logger.LogDebug("TRACKS: " + result.Tracks.Count());
+                _logger.LogDebug("ALBUMS: " + result.Albums.Count());
+                _logger.LogDebug("IS SUGGESTION: " + result.Suggestion);
                 // REMOVE THIS LATER!!!
                 // NEEDS BACKEND CHANGES.
                 // IF NOT REMOVED IN 1 MONTH ADMINISTER BROMINE HEXAFLUORIDE TO REPOSITORY OWNER
@@ -342,12 +346,15 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 if (result.Albums[0].Music.Count() == 0)
                 {
                     result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].Id);
+                    _logger.LogDebug($"Got {result.Albums[0].Music.Count()} songs in the album.");
                 }
                 if (shuffle)
                 {
                     result.Albums[0].Music = result.Albums[0].Music.Shuffle().ToList();
                 }
-                var firstToPlay = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]).OriginalString, TrackSearchMode.None);
+                var trackUri = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]);
+                _logger.LogDebug($"Got URI from {trackUri.OriginalString}.");
+                var firstToPlay = await _audioService.Tracks.LoadTrackAsync(trackUri.OriginalString, TrackSearchMode.None);
                 if (firstToPlay is null)
                 {
                     await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
