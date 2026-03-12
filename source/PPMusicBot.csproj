@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -6,23 +6,23 @@
     <UserSecretsId>dotnet-ASimpleDiscordBotArchitectureTest-81dc0436-d847-43ba-8e72-6724bd13f103</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Discord.Net" Version="3.18.0" />
-    <PackageReference Include="Discord.Net.Commands" Version="3.18.0" />
-    <PackageReference Include="Discord.Net.Core" Version="3.18.0" />
-    <PackageReference Include="Discord.Net.Rest" Version="3.18.0" />
-    <PackageReference Include="Discord.Net.Webhook" Version="3.18.0" />
-    <PackageReference Include="Discord.Net.WebSocket" Version="3.18.0" />
-    <PackageReference Include="Lavalink4NET" Version="4.1.0" />
-    <PackageReference Include="Lavalink4NET.Abstractions" Version="4.1.0" />
-    <PackageReference Include="Lavalink4NET.Artwork" Version="4.1.0" />
-    <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.1.0" />
-    <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.1.0" />
-    <PackageReference Include="Lavalink4NET.Protocol" Version="4.1.0" />
-    <PackageReference Include="Lavalink4NET.Rest" Version="4.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-    <PackageReference Include="Npgsql" Version="9.0.4" />
-    <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="Discord.Net" Version="3.19.0" />
+    <PackageReference Include="Discord.Net.Commands" Version="3.19.0" />
+    <PackageReference Include="Discord.Net.Core" Version="3.19.0" />
+    <PackageReference Include="Discord.Net.Rest" Version="3.19.0" />
+    <PackageReference Include="Discord.Net.Webhook" Version="3.19.0" />
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.19.0" />
+    <PackageReference Include="Lavalink4NET" Version="4.2.0" />
+    <PackageReference Include="Lavalink4NET.Abstractions" Version="4.2.0" />
+    <PackageReference Include="Lavalink4NET.Artwork" Version="4.2.0" />
+    <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.2.0" />
+    <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.2.0" />
+    <PackageReference Include="Lavalink4NET.Protocol" Version="4.2.0" />
+    <PackageReference Include="Lavalink4NET.Rest" Version="4.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+    <PackageReference Include="Npgsql" Version="10.0.1" />
+    <PackageReference Include="Serilog" Version="4.3.1" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>

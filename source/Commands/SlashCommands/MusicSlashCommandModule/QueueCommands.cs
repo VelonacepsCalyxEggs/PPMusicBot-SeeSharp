@@ -16,7 +16,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 return;
             }
 
-            if (player.Queue.Count is 0)
+            if (player.Queue.Count() is 0)
             {
                 await RespondAsync("The queue is empty!", ephemeral: true).ConfigureAwait(false);
                 return;
@@ -29,47 +29,55 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         [SlashCommand("move", description: "Moves a track to a new position.", runMode: RunMode.Async)]
         public async Task MoveAsync(int trackToMove, int position)
         {
-            var player = await GetPlayerAsync(connectToVoiceChannel: false);
+            try
+            {
+                var player = await GetPlayerAsync(connectToVoiceChannel: false);
 
-            if (player is null)
-            {
-                return;
-            }
+                if (player is null)
+                {
+                    return;
+                }
 
-            if (player.Queue.Count is 0)
-            {
-                await RespondAsync("The queue is empty!", ephemeral: true).ConfigureAwait(false);
-                return;
-            }
+                if (player.Queue.Count() is 0)
+                {
+                    await RespondAsync("The queue is empty!", ephemeral: true).ConfigureAwait(false);
+                    return;
+                }
 
-            if (trackToMove - 1 > player.Queue.Count || trackToMove - 1 < 0)
-            {
-                await RespondAsync("There is no track on that position.", ephemeral: true).ConfigureAwait(false);
-                return;
+                if (trackToMove - 1 > player.Queue.Count() || trackToMove - 1 < 0)
+                {
+                    await RespondAsync("There is no track on that position.", ephemeral: true).ConfigureAwait(false);
+                    return;
+                }
+                var item = player.Queue[trackToMove - 1];
+                if (position > player.Queue.Count())
+                {
+                    // move the track to the end of the queue
+                    await player.Queue.RemoveAtAsync(trackToMove - 1);
+                    await player.Queue.AddAsync(item);
+                    await RespondAsync("Moved the track to the end of the queue.").ConfigureAwait(false);
+                    return;
+                }
+                else if (position - 1 <= 0)
+                {
+                    // move the track to the first position
+                    await player.Queue.RemoveAtAsync(trackToMove - 1);
+                    await player.Queue.InsertAsync(0, item);
+                    await RespondAsync("Moved the track to the start of the queue.").ConfigureAwait(false);
+                    return;
+                }
+                else
+                {
+                    await player.Queue.RemoveAtAsync(trackToMove - 1);
+                    await player.Queue.InsertAsync(position - 1, item);
+                    await RespondAsync($"Inserted the track to position number {position}.").ConfigureAwait(false);
+                    return;
+                }
             }
-            var item = player.Queue[trackToMove - 1];
-            if (position > player.Queue.Count)
+            catch (Exception ex)
             {
-                // move the track to the end of the queue
-                await player.Queue.RemoveAtAsync(trackToMove - 1);
-                await player.Queue.AddAsync(item);
-                await RespondAsync("Moved the track to the end of the queue.").ConfigureAwait(false);
-                return;
-            }
-            else if (position - 1 <= 0)
-            {
-                // move the track to the first position
-                await player.Queue.RemoveAtAsync(trackToMove - 1);
-                await player.Queue.InsertAsync(0, item);
-                await RespondAsync("Moved the track to the start of the queue.").ConfigureAwait(false);
-                return;
-            }
-            else
-            {
-                await player.Queue.RemoveAtAsync(trackToMove - 1);
-                await player.Queue.InsertAsync(position - 1, item);
-                await RespondAsync($"Inserted the track to position number {position}.").ConfigureAwait(false);
-                return;
+                _logger.LogError(ex.Message, ex);
+                throw;
             }
         }
 
@@ -83,18 +91,18 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 return;
             }
 
-            if (player.Queue.Count is 0)
+            if (player.Queue.Count() is 0)
             {
                 await RespondAsync("The queue is empty!", ephemeral: true).ConfigureAwait(false);
                 return;
             }
 
-            if (position1 - 1 > player.Queue.Count || position1 - 1 < 0)
+            if (position1 - 1 > player.Queue.Count() || position1 - 1 < 0)
             {
                 await RespondAsync($"There is nothing on position {position1}!", ephemeral: true).ConfigureAwait(false);
                 return;
             }
-            if (position1 > player.Queue.Count || position1 - 1 < 0)
+            if (position1 > player.Queue.Count() || position1 - 1 < 0)
             {
                 await RespondAsync("The first position is larger than the queue or less than one.").ConfigureAwait(false);
                 return;

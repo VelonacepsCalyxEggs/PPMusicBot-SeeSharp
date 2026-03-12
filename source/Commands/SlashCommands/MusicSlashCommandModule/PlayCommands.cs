@@ -6,7 +6,6 @@ using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
-using System.Diagnostics.Eventing.Reader;
 using System.Text;
 using static PPMusicBot.Helpers.Helpers;
 namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
@@ -330,10 +329,10 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     }
                 }
 
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(position, tracks, result, null)).ConfigureAwait(false);
+                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, tracks, result, null)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Embed = await BuildPlayingEmbed(position, tracks, result, null);
+                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, tracks, result, null);
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
             }
@@ -362,10 +361,10 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
                 var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Albums[0].Music[0])).ConfigureAwait(false);
 
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(position, null, result, null)).ConfigureAwait(false);
+                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, null, result, null)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Embed = await BuildPlayingEmbed(position, null, result, null);
+                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, null, result, null);
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
                 foreach (var resultTrack in result.Albums[0].Music[1..])
