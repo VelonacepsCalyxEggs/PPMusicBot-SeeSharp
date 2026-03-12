@@ -22,7 +22,7 @@ try
         options.ServicesStartConcurrently = false;
         options.ServicesStopConcurrently = false;
     });
-    var logsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PPMusicBot", "logs/ppmusicbot-.txt");
+    var logsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PPMusicBotLogs", "logs/ppmusicbot-.txt");
     var loggerConfiguration = new LoggerConfiguration()
         .Enrich.FromLogContext()
         .WriteTo.File(
