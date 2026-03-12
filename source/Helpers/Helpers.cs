@@ -298,7 +298,7 @@ namespace PPMusicBot.Helpers
         public static string GetCachePath()
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string appName = "PPMusicBot";
+            string appName = "PPMusicBotLogs";
             return Path.Combine(appData, appName, "cache");
         }
     }
