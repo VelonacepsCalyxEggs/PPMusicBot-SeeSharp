@@ -218,7 +218,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         var trackCount = Math.Min(result.Tracks.Count, 15);
                         for (var i = 0; i < trackCount; i++)
                         {
-                            sb.AppendLine($"{result.Tracks[i].Title} - Score: {result.Tracks[i].Score}");
+                            sb.AppendLine($"{result.Tracks[i].Title} by {result.Tracks[i].Artist.Name} - {result.Tracks[i].Score}");
                             menuBuilder.AddOption($"Track: {result.Tracks[i].Title}", $"track_{i}");
                         }
                     }
@@ -242,8 +242,16 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         Footer = new EmbedFooterBuilder() { Text = $"Try using quotes to get more exact results for your query." }
                     }.Build();
 
+                    var cancelButton = new ButtonBuilder()
+                        .WithCustomId($"cancel_suggestion:{Context.Interaction.Id}")
+                        .WithLabel("Cancel")
+                        .WithStyle(ButtonStyle.Danger);
+
+
                     var components = new ComponentBuilder()
-                        .WithSelectMenu(menuBuilder).Build();
+                        .WithSelectMenu(menuBuilder)
+                        .WithButton(cancelButton)
+                        .Build();
                     await FollowupAsync(embed: embed, components: components).ConfigureAwait(false);
                     return;
                 }
@@ -308,7 +316,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 var tracks = await _audioService.Tracks.LoadTracksAsync(trackURL, TrackSearchMode.None);
                 if (tracks.Track is null)
                 {
-                    await FollowupAsync("Lavalink could not load the track.");
+                    await FollowupAsync("Lavalink could not load the track.").ConfigureAwait(false); ;
                     return;
                 }
                 if (!playAllTracks)
@@ -323,7 +331,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 {
                     foreach (var track in result.Tracks[1..])
                     {
-                        var loaded = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(track).OriginalString, TrackSearchMode.None);
+                        var loaded = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(track).OriginalString, TrackSearchMode.None).ConfigureAwait(false);
                         if (loaded is null) { continue; }
                         await player.PlayAsync(new CustomQueueTrackItem(loaded, track)).ConfigureAwait(false);
                     }
@@ -332,7 +340,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, tracks, result, null)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, tracks, result, null);
+                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, tracks, result, null).ConfigureAwait(false); ;
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
             }
@@ -344,7 +352,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
                 if (result.Albums[0].Music.Count() == 0)
                 {
-                    result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].Id);
+                    result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].Id).ConfigureAwait(false); ;
                     _logger.LogDebug($"Got {result.Albums[0].Music.Count()} songs in the album.");
                 }
                 if (shuffle)
@@ -353,7 +361,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
                 var trackUri = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]);
                 _logger.LogDebug($"Got URI from {trackUri.OriginalString}.");
-                var firstToPlay = await _audioService.Tracks.LoadTrackAsync(trackUri.OriginalString, TrackSearchMode.None);
+                var firstToPlay = await _audioService.Tracks.LoadTrackAsync(trackUri.OriginalString, TrackSearchMode.None).ConfigureAwait(false); ;
                 if (firstToPlay is null)
                 {
                     await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
@@ -364,22 +372,41 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, null, result, null)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, null, result, null);
+                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, null, result, null).ConfigureAwait(false); ;
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
                 foreach (var resultTrack in result.Albums[0].Music[1..])
                 {
-                    var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None);
+                    var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None).ConfigureAwait(false); ;
                     if (track is null) { continue; }
                     await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
                 }
             }
             else
             {
-                await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in the database.");
+                await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in the database.").ConfigureAwait(false); ;
             }
         }
-
+        [ComponentInteraction("cancel_suggestion:*")]
+        public async Task HandleCancelSuggestion(ulong interactionId)
+        {
+            try
+            {
+                await DeferAsync().ConfigureAwait(false);
+                _kenobiAPISearchEngineService.SuggestionCache.Remove(interactionId);
+                await ModifyOriginalResponseAsync(msg =>
+                {
+                    msg.Content = "Suggestion cancelled.";
+                    msg.Embed = null;
+                    msg.Components = new ComponentBuilder().Build();
+                }).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling suggestion menu.");
+                await FollowupAsync("An error occurred while cancelling.").ConfigureAwait(false);
+            }
+        }
         [ComponentInteraction("suggestion_selector:*")]
         public async Task HandleSuggestionSelection(ulong interactionId, string[] selectedOptions)
         {
