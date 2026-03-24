@@ -78,6 +78,7 @@ try
             config.ResumptionOptions = new LavalinkSessionResumptionOptions(timeout: (TimeSpan.Parse(lavalinkSection["HttpClient:Timeout"] ?? "00:00:30")));
             config.HttpClientName = "PPMusicBotC#";
             config.Passphrase = lavalinkSection["Passphrase"] ?? "youshallnotpass";
+            config.TrackCacheOptions = new Lavalink4NET.Rest.LavalinkTrackCacheOptions { FailureCacheDuration = new TimeSpan(0) }; // Due to unstable connection, this can be a hinderence.
         });
     builder.Services.AddInactivityTracking();
     builder.Services.ConfigureInactivityTracking(config =>
