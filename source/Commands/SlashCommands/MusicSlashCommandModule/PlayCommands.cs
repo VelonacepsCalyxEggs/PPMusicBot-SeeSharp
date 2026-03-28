@@ -378,7 +378,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 foreach (var resultTrack in result.Albums[0].Music[1..])
                 {
                     var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None).ConfigureAwait(false); ;
-                    if (track is null) { continue; }
+                    if (track is null) { continue; };
                     await player.PlayAsync(new CustomQueueTrackItem(track, resultTrack)).ConfigureAwait(false);
                 }
             }

@@ -7,7 +7,10 @@ public static class PlayerExtensions
     {
         return (item as CustomQueueTrackItem);
     }
-
+    public static CustomQueueTrackItem? GetTrackCustomData(this TrackReference item)
+    {
+        return (item as CustomQueueTrackItem);
+    }
     public static bool TryGetCustomData(this LavalinkPlayer player, out CustomQueueTrackItem? data)
     {
         if (player.CurrentItem is CustomQueueTrackItem customItem)

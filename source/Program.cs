@@ -6,7 +6,6 @@ using Lavalink4NET.Artwork;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Extensions;
-using PPMusicBot;
 using PPMusicBot.Services;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -78,7 +77,7 @@ try
             config.ResumptionOptions = new LavalinkSessionResumptionOptions(timeout: (TimeSpan.Parse(lavalinkSection["HttpClient:Timeout"] ?? "00:00:30")));
             config.HttpClientName = "PPMusicBotC#";
             config.Passphrase = lavalinkSection["Passphrase"] ?? "youshallnotpass";
-            config.TrackCacheOptions = new Lavalink4NET.Rest.LavalinkTrackCacheOptions { FailureCacheDuration = new TimeSpan(0) }; // Due to unstable connection, this can be a hinderence.
+            config.TrackCacheOptions = new Lavalink4NET.Rest.LavalinkTrackCacheOptions { FailureCacheDuration = TimeSpan.FromTicks(10) }; // Due to unstable connection, this can be a hinderence.
         });
     builder.Services.AddInactivityTracking();
     builder.Services.ConfigureInactivityTracking(config =>

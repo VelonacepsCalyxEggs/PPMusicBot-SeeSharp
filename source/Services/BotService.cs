@@ -5,8 +5,10 @@ using Lavalink4NET;
 using Lavalink4NET.Events.Players;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.Players;
+using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text;
 using static PPMusicBot.Helpers.Helpers;
@@ -25,6 +27,7 @@ namespace PPMusicBot.Services
         private readonly MusicService _musicService;
         private readonly DatabaseService _databaseService;
         private readonly IHostApplicationLifetime _applicationLifetime;
+        private ConcurrentDictionary<ulong, DateTime> _lastPlayerError;
 
         public BotService(
             ILogger<BotService> logger,
@@ -48,6 +51,7 @@ namespace PPMusicBot.Services
             _musicService = musicService;
             _databaseService = databaseService;
             _applicationLifetime = applicationLifetime;
+            _lastPlayerError = new ConcurrentDictionary<ulong, DateTime>();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -270,17 +274,73 @@ namespace PPMusicBot.Services
         // This needs proper handling.
         private async Task OnTrackException(object sender, TrackExceptionEventArgs eventArgs)
         {
-            _logger.LogError($"Track Exeption: {eventArgs.Exception.Cause}: {eventArgs.Exception.Message} \n Track: {eventArgs.Track.Title}");
-            ulong? textChannelID = _musicService.GetTextChannelId(eventArgs.Player.GuildId);
-            if (textChannelID is not null)
+            try
             {
-                SocketTextChannel textChannel = (SocketTextChannel)await _botClient.GetChannelAsync((ulong)textChannelID);
-                if (textChannel is not null)
+                _logger.LogError($"Track Exeption: {eventArgs.Exception.Cause}: {eventArgs.Exception.Message} \n Track: {eventArgs.Track.Title}");
+                bool wasPaused = false;
+                if (_lastPlayerError.TryGetValue(eventArgs.Player.GuildId, out var dateTime))
                 {
-                    await textChannel.SendMessageAsync($"There was a problem loading the track {eventArgs.Track.Title} from {eventArgs.Track.SourceName}. \n Error: {eventArgs.Exception.Cause}");
+                    if ((dateTime - DateTime.UtcNow) < TimeSpan.FromSeconds(10))
+                    {
+                        // if there was an error from this player less than 10 seconds ago, pause the player.
+                        await eventArgs.Player.PauseAsync();
+                        wasPaused = true;
+                    }
                 }
-             }
-            return;
+                _lastPlayerError[eventArgs.Player.GuildId] = DateTime.UtcNow;
+                ulong? textChannelID = _musicService.GetTextChannelId(eventArgs.Player.GuildId);
+                if (textChannelID is not null)
+                {
+                    SocketTextChannel textChannel = (SocketTextChannel)await _botClient.GetChannelAsync((ulong)textChannelID);
+                    if (textChannel is not null && eventArgs != null)
+                    {
+                        if (wasPaused)
+                        {
+                            await textChannel.SendMessageAsync("The player was paused due to too many errors happening in a short span of time.");
+                            return;
+                        }
+                        else
+                        {
+                            var player = (QueuedLavalinkPlayer)eventArgs.Player;
+                            string response = await HandleTrackException(player, eventArgs.Track?.SourceName!, eventArgs);
+                            await textChannel.SendMessageAsync(response);
+                        }
+                    }
+                }
+            } catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+            }
+        }
+        private async Task<string> HandleTrackException(QueuedLavalinkPlayer player, string source, TrackExceptionEventArgs eventArgs)
+        {
+            return source switch
+            {
+                "http" => await HandleHTTPTrackException(player, eventArgs),
+                "youtube" => await HandleYouTubeTrackException(player, eventArgs),
+                _ => throw new NotImplementedException() // There are no other supported sources yet.
+            };
+        }
+
+        private static async Task<string> HandleHTTPTrackException(QueuedLavalinkPlayer player, TrackExceptionEventArgs eventArgs)
+        {
+            if (eventArgs.Exception.Cause == "java.lang.RuntimeException: Not success status code: 503")
+            {
+                // If service is unavailable, we should drop all tracks from this host.
+                await player.Queue.RemoveAllAsync(t => t.Track?.Uri?.Host == eventArgs.Track?.Uri?.Host);
+                return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host} due to it being unavailable, all tracks from that host were removed from the queue.";
+            }
+            else if (eventArgs.Exception.Cause == "java.lang.RuntimeException: Not success status code: 404")
+            {
+                return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host}, data was not found.";
+            }
+            else return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host}, an unhandled error occured, report this to the developer.";
+
+        }
+        private static async Task<string> HandleYouTubeTrackException(QueuedLavalinkPlayer player, TrackExceptionEventArgs eventArgs)
+        {
+            // This can get complex, will leave it as is for now to gather more info on possible exceptions.
+            return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.SourceName}. \n ```Error: {eventArgs.Exception.Cause}```";
         }
         // Never had this happen before, needs testing.
         private Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)
