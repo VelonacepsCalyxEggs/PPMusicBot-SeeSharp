@@ -280,7 +280,7 @@ namespace PPMusicBot.Services
                 bool wasPaused = false;
                 if (_lastPlayerError.TryGetValue(eventArgs.Player.GuildId, out var dateTime))
                 {
-                    if ((dateTime - DateTime.UtcNow) < TimeSpan.FromSeconds(10))
+                    if ((DateTime.UtcNow - dateTime) < TimeSpan.FromSeconds(10))
                     {
                         // if there was an error from this player less than 10 seconds ago, pause the player.
                         await eventArgs.Player.PauseAsync();
@@ -329,6 +329,11 @@ namespace PPMusicBot.Services
                 // If service is unavailable, we should drop all tracks from this host.
                 await player.Queue.RemoveAllAsync(t => t.Track?.Uri?.Host == eventArgs.Track?.Uri?.Host);
                 return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host} due to it being unavailable, all tracks from that host were removed from the queue.";
+            }
+            else if (eventArgs.Exception.Cause == "java.lang.RuntimeException: Not success status code: 500")
+            {
+                await player.Queue.RemoveAllAsync(t => t.Track?.Uri?.Host == eventArgs.Track?.Uri?.Host);
+                return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host} due to it returning an internal server error, all tracks from that host were removed from the queue.";
             }
             else if (eventArgs.Exception.Cause == "java.lang.RuntimeException: Not success status code: 404")
             {
