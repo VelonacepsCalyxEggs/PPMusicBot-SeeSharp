@@ -209,6 +209,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 {
                     msg.Content = "Queue is no longer available.";
                     msg.Components = new ComponentBuilder().Build();
+                    msg.Embed = new EmbedBuilder().Build();
                 }).ConfigureAwait(false);
                 return;
             }
