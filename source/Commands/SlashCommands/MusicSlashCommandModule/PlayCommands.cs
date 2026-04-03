@@ -38,13 +38,13 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 
                     var position = await player.PlayAsync(tracks).ConfigureAwait(false);
 
-                    await FollowupAsync(embed: await BuildPlayingEmbed(position, tracks, null, _artworkService)).ConfigureAwait(false);
+                    await FollowupAsync(embed: await BuildPlayingEmbed(position, lavalinkResult: tracks, artworkService: _artworkService).ConfigureAwait(false)).ConfigureAwait(false);
                     return;
                 }
                 else
                 {
                     _logger.LogWarning($"Attachment of non audio type: {file.ContentType}");
-                    await FollowupAsync("Sorry, but your file is not a mp3, mp4, wav or a ogg.");
+                    await FollowupAsync("Sorry, but your file is not a mp3, mp4, wav or a ogg.").ConfigureAwait(false);
                     return;
                 }
             }
@@ -56,6 +56,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         }
         /// <summary>
         ///     Plays music asynchronously.
+        ///     IMPORTANT: First Loads tracks, then builds embed.
         /// </summary>
         /// <param name="query">the search query</param>
         /// <returns>a task that represents the asynchronous operation</returns>
@@ -86,7 +87,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
 
                 TrackLoadResult result;
-                if (playQuery.QueryType == PlayQueryType.External)
+                if (playQuery.QueryType == PlayQueryType.External) // If is external, we try to resolve.
                 {
                     result = await _audioService.Tracks.LoadTracksAsync(playQuery.Query, new TrackLoadOptions(playQuery.SearchMode, StrictSearchBehavior.Resolve)).ConfigureAwait(false);
                 }
@@ -107,7 +108,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
 
                 
-                await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, result, null, _artworkService)).ConfigureAwait(false);
+                await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, lavalinkResult: result, artworkService: _artworkService).ConfigureAwait(false)).ConfigureAwait(false);
                 if (playQuery.IsPlaylist || result.IsPlaylist)
                 {
                     foreach (var track in shuffledTracks ?? result.Tracks)
@@ -136,6 +137,12 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             [ChoiceDisplay("Albums")]
             Albums
         }
+        /// <summary>
+        ///     Plays music from database asynchronously.
+        ///     IMPORTANT: First builds embed, then loads tracks.
+        /// </summary>
+        /// <param name="query">the search query</param>
+        /// <returns>a task that represents the asynchronous operation</returns>
         [SlashCommand("fromdb", description: "Plays music from database only.", runMode: RunMode.Async)]
         public async Task PlayFromDbAsync(
             string query,
@@ -170,7 +177,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     result.Albums.Clear();
                     if (result.Tracks.Count() == 1)
                     {
-                        await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
+                        await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType).ConfigureAwait(false);
                         return;
                     }
                     else if (result.Tracks.Count() != 0)
@@ -179,7 +186,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     }
                     else
                     {
-                        await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in DB.");
+                        await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in DB.").ConfigureAwait(false);
                         return;
                     }
                 }
@@ -188,7 +195,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     result.Tracks.Clear();
                     if (result.Albums.Count() == 1)
                     {
-                        await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
+                        await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType).ConfigureAwait(false);
                         return;
                     }
                     else if (result.Albums.Count() != 0)
@@ -197,7 +204,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     }
                     else
                     {
-                        await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in DB.");
+                        await FollowupAsync($"Could not find any matching {(searchType != SearchType.Any ? searchType.ToString() : "entries")} in DB.").ConfigureAwait(false);
                         return;
                     }
                 }
@@ -256,7 +263,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     return;
                 }
 
-                await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType);
+                await PlayDatabaseTracks(player, result, shuffle: shuffle, searchType: searchType).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -289,7 +296,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     return;
                 }
 
-                await PlayDatabaseTracks(player, result, playAllTracks: true);
+                await PlayDatabaseTracks(player, result, playAllTracks: true).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -313,10 +320,16 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             {
                 var trackURL = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString;
                 _logger.LogDebug($"Loading from URL: {trackURL}");
+                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false)).ConfigureAwait(false);
+                else await ModifyOriginalResponseAsync(async msg =>
+                {
+                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false); ;
+                    msg.Components = new ComponentBuilder().Build();
+                }).ConfigureAwait(false);
                 var tracks = await _audioService.Tracks.LoadTracksAsync(trackURL, TrackSearchMode.None);
                 if (tracks.Track is null)
                 {
-                    await FollowupAsync("Lavalink could not load the track.").ConfigureAwait(false); ;
+                    await ModifyOriginalResponseAsync(async msg => await FollowupAsync("Lavalink could not load the track.").ConfigureAwait(false)).ConfigureAwait(false);
                     return;
                 }
                 if (!playAllTracks)
@@ -336,13 +349,6 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         await player.PlayAsync(new CustomQueueTrackItem(loaded, track)).ConfigureAwait(false);
                     }
                 }
-
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, tracks, result, null)).ConfigureAwait(false);
-                else await ModifyOriginalResponseAsync(async msg =>
-                {
-                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, tracks, result, null).ConfigureAwait(false); ;
-                    msg.Components = new ComponentBuilder().Build();
-                }).ConfigureAwait(false);
             }
             else if (result.Albums.Count() > 0 && (searchType == SearchType.Albums || searchType == SearchType.Any))
             {
@@ -361,20 +367,20 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
                 var trackUri = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]);
                 _logger.LogDebug($"Got URI from {trackUri.OriginalString}.");
+                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false)).ConfigureAwait(false);
+                else await ModifyOriginalResponseAsync(async msg =>
+                {
+                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false); ;
+                    msg.Components = new ComponentBuilder().Build();
+                }).ConfigureAwait(false);
                 var firstToPlay = await _audioService.Tracks.LoadTrackAsync(trackUri.OriginalString, TrackSearchMode.None).ConfigureAwait(false); ;
                 if (firstToPlay is null)
                 {
-                    await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.");
+                    await ModifyOriginalResponseAsync(async msg => await FollowupAsync("Huh? The first track in the sequence is not available? Aborting.").ConfigureAwait(false)).ConfigureAwait(false);
                     return;
                 }
                 var position = await player.PlayAsync(new CustomQueueTrackItem(firstToPlay, result.Albums[0].Music[0])).ConfigureAwait(false);
 
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, null, result, null)).ConfigureAwait(false);
-                else await ModifyOriginalResponseAsync(async msg =>
-                {
-                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, null, result, null).ConfigureAwait(false); ;
-                    msg.Components = new ComponentBuilder().Build();
-                }).ConfigureAwait(false);
                 foreach (var resultTrack in result.Albums[0].Music[1..])
                 {
                     var track = await _audioService.Tracks.LoadTrackAsync(_kenobiAPISearchEngineService.GetTrackUriFromTrackObject(resultTrack).OriginalString, TrackSearchMode.None).ConfigureAwait(false); ;
@@ -438,13 +444,13 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 {
                     var trackIndex = int.Parse(selectedValue.Substring(6));
                     result.Albums.Clear();
-                    await PlayDatabaseTracks(player, result, wantedTrackIndex: trackIndex, doModifyOriginalResponse: true);
+                    await PlayDatabaseTracks(player, result, wantedTrackIndex: trackIndex, doModifyOriginalResponse: true).ConfigureAwait(false);
                 }
                 else if (selectedValue.StartsWith("album_"))
                 {
                     var albumIndex = int.Parse(selectedValue.Substring(6));
                     result.Tracks.Clear();
-                    await PlayDatabaseTracks(player, result, wantedAlbumIndex: albumIndex, doModifyOriginalResponse: true);
+                    await PlayDatabaseTracks(player, result, wantedAlbumIndex: albumIndex, doModifyOriginalResponse: true).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)

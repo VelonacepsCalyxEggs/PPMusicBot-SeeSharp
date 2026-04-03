@@ -12,73 +12,80 @@ using static PPMusicBot.Models.KenobiAPIModels;
 
 namespace PPMusicBot.Helpers
 {
-    public static class Helpers
+    public static class Helpers 
     {
         // This needs a rewrite.
-        public static async Task<Embed> BuildPlayingEmbed(int position, TrackLoadResult? lavalinkResult, KenobiAPISearchResult? result, ArtworkService? artworkService)
+        public static async Task<Embed> BuildPlayingEmbed(
+            int position, 
+            ArtworkService? artworkService = null, 
+            TrackLoadResult? lavalinkResult = null, 
+            KenobiAPISearchResult? result = null)
         {
-            bool positionZero = position == 0;
-            if (lavalinkResult is not null && !lavalinkResult.Value.IsPlaylist)
+            bool IsExternal = result == null && artworkService == null;
+            bool IsKenobiApi = lavalinkResult == null;
+            if (IsExternal)
+                return await BuildExterbalEmbed(position, (ArtworkService)artworkService!, (TrackLoadResult)lavalinkResult!);
+            else if (IsKenobiApi)
+                return await BuildKenobiApiEmbed(position, (KenobiAPISearchResult)result!);
+            else
+                throw new ArgumentException("Both Lavalink result or Artwork Service and KenobiAPI result were null. Can't build embed.");
+        }
+        private static async Task<Embed> BuildExterbalEmbed(int position, ArtworkService artworkService, TrackLoadResult result)
+        {
+            bool posIsZero = position == 0;
+            int tweakedPos = posIsZero ? position : position + 1;
+            if (result.IsPlaylist)
             {
-                var track = lavalinkResult.Value.Track;
-                if (track is not null)
-                {
-                    TimeSpan finalDuration = TimeSpan.Zero;
-
-                    if (result != null && result.Tracks.Count > 0)
-                    {
-                        finalDuration = TimeSpan.FromSeconds(result.Tracks[0].Duration);
-                    }
-                    else if (lavalinkResult?.Track != null)
-                    {
-                        finalDuration = lavalinkResult.Value.Track.Duration;
-                    }
-
-                    bool resultExists = result != null;
-
-                    bool isActuallyLive = (result == null && track.IsLiveStream); // Having to jump through hoops because backend serves music in chunked mode.
-                    string durationText = isActuallyLive ? "∞" : finalDuration.ToString(@"mm\:ss");
-
-                    return new EmbedBuilder()
-                    {
-                        Title = positionZero ? "Playing:" : "Added to queue:",
-                        Description = $"**{(resultExists ? result!.Tracks[0].Title : track.Title)}** by **{(resultExists ? result!.Tracks[0].Artist.Name : track.Author)}** from **{(resultExists ? result!.Tracks[0].Album.Name : track.Uri)}**",
-                        Footer = new EmbedFooterBuilder()
-                        {
-                            Text = $" Duration: {durationText} | Position: {(positionZero ? position : position + 1)}"
-                        },
-                        ImageUrl = result is null
-                            ? (await BuildImageUrlAsync(artworkService, track))
-                            : Helpers.GetKenobiApiImagePreview(result).OriginalString
-                    }.Build();
-                }
-                throw new ArgumentNullException(nameof(lavalinkResult.Value.Track));
-            }
-            else if (lavalinkResult is not null && lavalinkResult.Value.IsPlaylist)
-            {
-                if (lavalinkResult.Value.Tracks.Length > 0 && lavalinkResult.Value.Track is not null)
+                if (result.Tracks.Length > 0 && result.Track is not null)
                 {
                     TimeSpan totalPlaylistDuration = new TimeSpan();
-                    foreach (var item in lavalinkResult.Value.Tracks)
+                    foreach (var item in result.Tracks)
                     {
                         totalPlaylistDuration += item.Duration;
                     }
                     return new EmbedBuilder()
                     {
-                        Title = positionZero ? "Playing:" : "Added to queue:",
-                        Description = $"**{lavalinkResult.Value.Playlist.Name}** with {lavalinkResult.Value.Tracks.Length} tracks.",
-                        Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalPlaylistDuration:hh\\:mm\\:ss} | From position: {(positionZero ? position : position + 1)} to {(positionZero ? position + lavalinkResult.Value.Tracks.Length : position + 1 + lavalinkResult.Value.Tracks.Length)}" },
-                        ImageUrl = await BuildImageUrlAsync(artworkService, lavalinkResult.Value.Track)
+                        Title = posIsZero ? "Playing:" : "Added to queue:",
+                        Description = $"**{result.Playlist.Name}** with {result.Tracks.Length} tracks.",
+                        Footer = new EmbedFooterBuilder()
+                        {
+                            Text = $" Duration: {totalPlaylistDuration:hh\\:mm\\:ss} | " +
+                            $"From position: {tweakedPos} to {tweakedPos + result.Tracks.Length}"
+                        },
+                        ImageUrl = await BuildImageUrlAsync(artworkService, result.Track)
 
                     }.Build();
                 }
-                else
-                {
-                    throw new ArgumentNullException(nameof(lavalinkResult.Value.Track));
-                }
+                else throw new Exception("Result was a playlist, but had no tracks or the first track is null.");
             }
-            else if (result is not null && result.Albums.Count > 0)
+            else
             {
+                LavalinkTrack? track = result.Track;
+                if (track is not null)
+                {
+                    string durationText = track.IsLiveStream ? "∞" : track.Duration.ToString(@"mm\:ss");
+                    return new EmbedBuilder()
+                    {
+                        Title = posIsZero ? "Playing:" : "Added to queue:",
+                        Description = $"**{track.Title}** by **{track.Author}** from **{track.Uri}**",
+                        Footer = new EmbedFooterBuilder()
+                        {
+                            Text = $" Duration: {durationText} | Position: {tweakedPos}"
+                        },
+                        ImageUrl = await BuildImageUrlAsync(artworkService, track)
+                    }.Build();
+                }
+                else throw new ArgumentNullException($"Embed track was null. {nameof(track)}");
+            }
+        }
+
+        private static async Task<Embed> BuildKenobiApiEmbed(int position, KenobiAPISearchResult result)
+        {
+            bool posIsZero = position == 0;
+            int tweakedPos = posIsZero ? position : position + 1;
+            if (result.Albums.Count != 0)
+            {
+                if (result.Albums[0].Music.Count == 0) throw new ArgumentOutOfRangeException("The result indicated album, but there was no music.");
                 TimeSpan totalAlbumDuration = new TimeSpan();
                 foreach (var item in result.Albums[0].Music)
                 {
@@ -86,17 +93,34 @@ namespace PPMusicBot.Helpers
                 }
                 return new EmbedBuilder()
                 {
-                    Title = position is 0 ? "Playing:" : "Added to queue:",
+                    Title = posIsZero ? "Playing:" : "Added to queue:",
                     Description = $"**{result.Albums[0].Name}** with {result.Albums[0].Music.Count} tracks.",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {(positionZero ? position : position + 1)} to {(positionZero ? position + result.Albums[0].Music.Count : position + 1 + result.Albums[0].Music.Count)}" },
-                    ImageUrl = Helpers.GetKenobiApiImagePreview(result: result).OriginalString
-
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {tweakedPos} to {tweakedPos + result.Albums[0].Music.Count}" },
+                    ImageUrl = GetKenobiApiImagePreview(result: result).OriginalString
                 }.Build();
             }
-            else
+            else if (result.Tracks.Count == 1) // Should always be used if 1 track only.
             {
-                throw new ArgumentNullException("No track or Album having SearchResult was passed.");
+                string durationText = TimeSpan.FromSeconds(result.Tracks[0].Duration).ToString(@"mm\:ss");
+                return new EmbedBuilder()
+                {
+                    Title = IsPlayingOrAdded(posIsZero),
+                    Description = $"**{result.Tracks[0].Title}** by **{result.Tracks[0].Artist.Name}** from **{result.Tracks[0].Album.Name}**",
+                    Footer = new EmbedFooterBuilder()
+                    {
+                        Text = $" Duration: {durationText} | Position: {tweakedPos}"
+                    },
+                    ImageUrl = GetKenobiApiImagePreview(result).OriginalString
+                }.Build();
             }
+            else throw new ArgumentOutOfRangeException("The result had no albums, or tracks were more or less than 1.");
+        }
+        // As dumb as this looks, this helps with localization.
+        private static string IsPlayingOrAdded(bool positionIsZero)
+        {
+            if (positionIsZero)
+                return "Playing";
+            else return "Added to queue.";
         }
 
         public static async Task<Embed> BuildCurrentlyPlayingEmbed(ITrackQueueItem item, VoteLavalinkPlayer player, ArtworkService? artworkService)
