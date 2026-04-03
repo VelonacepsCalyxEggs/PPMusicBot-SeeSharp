@@ -36,9 +36,9 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         return;
                     }
 
-                    var position = await player.PlayAsync(tracks).ConfigureAwait(false);
+                    await player.PlayAsync(tracks).ConfigureAwait(false);
 
-                    await FollowupAsync(embed: await BuildPlayingEmbed(position, lavalinkResult: tracks, artworkService: _artworkService).ConfigureAwait(false)).ConfigureAwait(false);
+                    await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, lavalinkResult: tracks, artworkService: _artworkService).ConfigureAwait(false)).ConfigureAwait(false);
                     return;
                 }
                 else
@@ -56,7 +56,6 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         }
         /// <summary>
         ///     Plays music asynchronously.
-        ///     IMPORTANT: First Loads tracks, then builds embed.
         /// </summary>
         /// <param name="query">the search query</param>
         /// <returns>a task that represents the asynchronous operation</returns>
@@ -108,7 +107,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
 
                 
-                await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, lavalinkResult: result, artworkService: _artworkService).ConfigureAwait(false)).ConfigureAwait(false);
+                await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, lavalinkResult: result, artworkService: _artworkService).ConfigureAwait(false)).ConfigureAwait(false);
                 if (playQuery.IsPlaylist || result.IsPlaylist)
                 {
                     foreach (var track in shuffledTracks ?? result.Tracks)
@@ -320,7 +319,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             {
                 var trackURL = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString;
                 _logger.LogDebug($"Loading from URL: {trackURL}");
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false)).ConfigureAwait(false);
+                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, result: result).ConfigureAwait(false)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
                     msg.Embed = await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false); ;
@@ -367,7 +366,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 }
                 var trackUri = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Albums[0].Music[0]);
                 _logger.LogDebug($"Got URI from {trackUri.OriginalString}.");
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false)).ConfigureAwait(false);
+                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, result: result).ConfigureAwait(false)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
                     msg.Embed = await BuildPlayingEmbed(player.Queue.Count, result: result).ConfigureAwait(false); ;

@@ -16,24 +16,26 @@ namespace PPMusicBot.Helpers
     {
         // This needs a rewrite.
         public static async Task<Embed> BuildPlayingEmbed(
-            int position, 
+            int position,
+            PlayerState state,
             ArtworkService? artworkService = null, 
             TrackLoadResult? lavalinkResult = null, 
             KenobiAPISearchResult? result = null)
         {
             bool IsExternal = result == null && artworkService != null;
             bool IsKenobiApi = lavalinkResult == null;
+            bool IsPlaying = state == PlayerState.Playing;
             if (IsExternal)
-                return await BuildExternalEmbed(position, (ArtworkService)artworkService!, (TrackLoadResult)lavalinkResult!);
+                return await BuildExternalEmbed(position, IsPlaying, (ArtworkService)artworkService!, (TrackLoadResult)lavalinkResult!);
             else if (IsKenobiApi)
-                return await BuildKenobiApiEmbed(position, (KenobiAPISearchResult)result!);
+                return await BuildKenobiApiEmbed(position, IsPlaying, (KenobiAPISearchResult)result!);
             else
                 throw new ArgumentException("Both Lavalink result or Artwork Service and KenobiAPI result were null. Can't build embed.");
         }
-        private static async Task<Embed> BuildExternalEmbed(int position, ArtworkService artworkService, TrackLoadResult result)
+        private static async Task<Embed> BuildExternalEmbed(int position, bool isPlaying, ArtworkService artworkService, TrackLoadResult result)
         {
             bool posIsZero = position == 0;
-            int tweakedPos = posIsZero ? position : position + 1;
+            int tweakedPos = posIsZero && !isPlaying ? position : position + 1;
             if (result.IsPlaylist)
             {
                 if (result.Tracks.Length > 0 && result.Track is not null)
@@ -79,10 +81,10 @@ namespace PPMusicBot.Helpers
             }
         }
 
-        private static async Task<Embed> BuildKenobiApiEmbed(int position, KenobiAPISearchResult result)
+        private static async Task<Embed> BuildKenobiApiEmbed(int position, bool isPlaying, KenobiAPISearchResult result)
         {
             bool posIsZero = position == 0;
-            int tweakedPos = posIsZero ? position : position + 1;
+            int tweakedPos = posIsZero && !isPlaying ? position : position + 1;
             if (result.Albums.Count != 0)
             {
                 if (result.Albums[0].Music.Count == 0) throw new ArgumentOutOfRangeException("The result indicated album, but there was no music.");
