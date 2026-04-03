@@ -21,16 +21,16 @@ namespace PPMusicBot.Helpers
             TrackLoadResult? lavalinkResult = null, 
             KenobiAPISearchResult? result = null)
         {
-            bool IsExternal = result == null && artworkService == null;
+            bool IsExternal = result == null && artworkService != null;
             bool IsKenobiApi = lavalinkResult == null;
             if (IsExternal)
-                return await BuildExterbalEmbed(position, (ArtworkService)artworkService!, (TrackLoadResult)lavalinkResult!);
+                return await BuildExternalEmbed(position, (ArtworkService)artworkService!, (TrackLoadResult)lavalinkResult!);
             else if (IsKenobiApi)
                 return await BuildKenobiApiEmbed(position, (KenobiAPISearchResult)result!);
             else
                 throw new ArgumentException("Both Lavalink result or Artwork Service and KenobiAPI result were null. Can't build embed.");
         }
-        private static async Task<Embed> BuildExterbalEmbed(int position, ArtworkService artworkService, TrackLoadResult result)
+        private static async Task<Embed> BuildExternalEmbed(int position, ArtworkService artworkService, TrackLoadResult result)
         {
             bool posIsZero = position == 0;
             int tweakedPos = posIsZero ? position : position + 1;
