@@ -14,8 +14,10 @@ namespace PPMusicBot.Helpers
 {
     public static class Helpers
     {
+        // This needs a rewrite.
         public static async Task<Embed> BuildPlayingEmbed(int position, TrackLoadResult? lavalinkResult, KenobiAPISearchResult? result, ArtworkService? artworkService)
         {
+            bool positionZero = position == 0;
             if (lavalinkResult is not null && !lavalinkResult.Value.IsPlaylist)
             {
                 var track = lavalinkResult.Value.Track;
@@ -39,11 +41,11 @@ namespace PPMusicBot.Helpers
 
                     return new EmbedBuilder()
                     {
-                        Title = position is 0 ? "Playing:" : "Added to queue:",
+                        Title = positionZero ? "Playing:" : "Added to queue:",
                         Description = $"**{(resultExists ? result!.Tracks[0].Title : track.Title)}** by **{(resultExists ? result!.Tracks[0].Artist.Name : track.Author)}** from **{(resultExists ? result!.Tracks[0].Album.Name : track.Uri)}**",
                         Footer = new EmbedFooterBuilder()
                         {
-                            Text = $" Duration: {durationText} | Position: {position + 1}"
+                            Text = $" Duration: {durationText} | Position: {(positionZero ? position : position + 1)}"
                         },
                         ImageUrl = result is null
                             ? (await BuildImageUrlAsync(artworkService, track))
@@ -63,9 +65,9 @@ namespace PPMusicBot.Helpers
                     }
                     return new EmbedBuilder()
                     {
-                        Title = position is 0 ? "Playing:" : "Added to queue:",
+                        Title = positionZero ? "Playing:" : "Added to queue:",
                         Description = $"**{lavalinkResult.Value.Playlist.Name}** with {lavalinkResult.Value.Tracks.Length} tracks.",
-                        Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalPlaylistDuration:hh\\:mm\\:ss} | From position: {position + 1} to {position + 1 + lavalinkResult.Value.Tracks.Length}" },
+                        Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalPlaylistDuration:hh\\:mm\\:ss} | From position: {(positionZero ? position : position + 1)} to {(positionZero ? position + lavalinkResult.Value.Tracks.Length : position + 1 + lavalinkResult.Value.Tracks.Length)}" },
                         ImageUrl = await BuildImageUrlAsync(artworkService, lavalinkResult.Value.Track)
 
                     }.Build();
@@ -86,7 +88,7 @@ namespace PPMusicBot.Helpers
                 {
                     Title = position is 0 ? "Playing:" : "Added to queue:",
                     Description = $"**{result.Albums[0].Name}** with {result.Albums[0].Music.Count} tracks.",
-                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {position + 1} to {position + 1 + result.Albums[0].Music.Count}" },
+                    Footer = new EmbedFooterBuilder() { Text = $" Duration: {totalAlbumDuration:hh\\:mm\\:ss} | From position: {(positionZero ? position : position + 1)} to {(positionZero ? position + result.Albums[0].Music.Count : position + 1 + result.Albums[0].Music.Count)}" },
                     ImageUrl = Helpers.GetKenobiApiImagePreview(result: result).OriginalString
 
                 }.Build();

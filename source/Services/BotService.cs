@@ -280,7 +280,7 @@ namespace PPMusicBot.Services
                 bool wasPaused = false;
                 if (_lastPlayerError.TryGetValue(eventArgs.Player.GuildId, out var dateTime))
                 {
-                    if ((DateTime.UtcNow - dateTime) < TimeSpan.FromSeconds(10))
+                    if (((DateTime.UtcNow - dateTime) < TimeSpan.FromSeconds(10)) && eventArgs.Player.State == PlayerState.Paused)
                     {
                         // if there was an error from this player less than 10 seconds ago, pause the player.
                         await eventArgs.Player.PauseAsync();
