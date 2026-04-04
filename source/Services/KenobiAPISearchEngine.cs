@@ -5,6 +5,7 @@ using Newtonsoft.Json.Serialization;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
 using System.Text;
+using System.Text.RegularExpressions;
 using static PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule.MusicSlashCommandModule;
 
 namespace PPMusicBot.Services
@@ -60,10 +61,13 @@ namespace PPMusicBot.Services
                 if (parsedData != null)
                 {
                     var parsedResponse = await CalculateResponseAsync(parsedData, searchType);
-                    if (parsedResponse is not null && parsedResponse.Suggestion)
+                    if (parsedResponse is not null)
                     {
-                        SuggestionCache.Add(interactionId, (parsedResponse, DateTime.UtcNow));
-                        CleanupOldEntries();
+                        if (parsedResponse.Suggestion)
+                        {
+                            SuggestionCache.Add(interactionId, (parsedResponse, DateTime.UtcNow));
+                            CleanupOldEntries();
+                        }
                     }
                     return parsedResponse;
                 }

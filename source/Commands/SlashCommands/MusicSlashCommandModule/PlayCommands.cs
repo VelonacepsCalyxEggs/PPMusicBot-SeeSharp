@@ -445,12 +445,14 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 {
                     var trackIndex = int.Parse(selectedValue.Substring(6));
                     result.Albums.Clear();
+                    result.Tracks = [result.Tracks[trackIndex]];
                     await PlayDatabaseTracks(player, result, wantedTrackIndex: trackIndex, doModifyOriginalResponse: true).ConfigureAwait(false);
                 }
                 else if (selectedValue.StartsWith("album_"))
                 {
                     var albumIndex = int.Parse(selectedValue.Substring(6));
                     result.Tracks.Clear();
+                    result.Albums = [result.Albums[albumIndex]];
                     await PlayDatabaseTracks(player, result, wantedAlbumIndex: albumIndex, doModifyOriginalResponse: true).ConfigureAwait(false);
                 }
             }
