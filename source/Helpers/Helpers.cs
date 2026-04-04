@@ -101,7 +101,7 @@ namespace PPMusicBot.Helpers
                     ImageUrl = GetKenobiApiImagePreview(result: result).OriginalString
                 }.Build();
             }
-            else if (result.Tracks.Count == 1) // Should always be used if 1 track only.
+            else if (result.Tracks.Count > 0)
             {
                 string durationText = TimeSpan.FromSeconds(result.Tracks[0].Duration).ToString(@"mm\:ss");
                 return new EmbedBuilder()
@@ -115,7 +115,7 @@ namespace PPMusicBot.Helpers
                     ImageUrl = GetKenobiApiImagePreview(result).OriginalString
                 }.Build();
             }
-            else throw new ArgumentOutOfRangeException("The result had no albums, or tracks were more or less than 1.");
+            else throw new ArgumentOutOfRangeException(nameof(result));
         }
         // As dumb as this looks, this helps with localization.
         private static string IsPlayingOrAdded(bool positionIsZero)

@@ -339,6 +339,10 @@ namespace PPMusicBot.Services
             {
                 return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host}, data was not found.";
             }
+            else if (eventArgs.Exception.Cause == $"java.net.UnknownHostException: {eventArgs.Track?.Uri?.Host}")
+            {
+                return $"There is a network problem on the bot's server, and due to it we are unable to resolve host {eventArgs.Track?.Uri?.Host}, track could not be loaded.";
+            }
             else return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host}, an unhandled error occured, report this to the developer.";
 
         }
