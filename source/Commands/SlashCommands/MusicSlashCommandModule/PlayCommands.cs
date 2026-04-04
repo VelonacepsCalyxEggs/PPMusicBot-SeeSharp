@@ -306,8 +306,6 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         private async Task PlayDatabaseTracks(
             VoteLavalinkPlayer player, 
             KenobiAPISearchResult result, 
-            int wantedTrackIndex = 0, 
-            int wantedAlbumIndex = 0, 
             bool doModifyOriginalResponse = false, 
             bool shuffle = false, 
             SearchType searchType = SearchType.Any,
@@ -317,7 +315,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             if ((result.Tracks.Count() > 0 && result.Albums.Count() == 0) 
                 && (searchType == SearchType.Tracks || searchType == SearchType.Any))
             {
-                var trackURL = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[wantedTrackIndex]).OriginalString;
+                var trackURL = _kenobiAPISearchEngineService.GetTrackUriFromTrackObject(result.Tracks[0]).OriginalString;
                 _logger.LogDebug($"Loading from URL: {trackURL}");
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, result: result).ConfigureAwait(false)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
@@ -333,7 +331,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     return;
                 }
                 if (!playAllTracks)
-                    result.Tracks = [result.Tracks[wantedTrackIndex]];
+                    result.Tracks = [result.Tracks[0]];
                 if (shuffle)
                 {
                     result.Tracks = result.Tracks.Shuffle().ToList();
@@ -352,10 +350,6 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             }
             else if (result.Albums.Count() > 0 && (searchType == SearchType.Albums || searchType == SearchType.Any))
             {
-                if (wantedAlbumIndex != 0)
-                {
-                    result.Albums = [result.Albums[wantedAlbumIndex]];
-                }
                 if (result.Albums[0].Music.Count() == 0)
                 {
                     result.Albums[0].Music = await _kenobiAPISearchEngineService.RequestAlbumSongsAsync(result.Albums[0].Id).ConfigureAwait(false); ;
@@ -446,14 +440,14 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     var trackIndex = int.Parse(selectedValue.Substring(6));
                     result.Albums.Clear();
                     result.Tracks = [result.Tracks[trackIndex]];
-                    await PlayDatabaseTracks(player, result, wantedTrackIndex: trackIndex, doModifyOriginalResponse: true).ConfigureAwait(false);
+                    await PlayDatabaseTracks(player, result, doModifyOriginalResponse: true).ConfigureAwait(false);
                 }
                 else if (selectedValue.StartsWith("album_"))
                 {
                     var albumIndex = int.Parse(selectedValue.Substring(6));
                     result.Tracks.Clear();
                     result.Albums = [result.Albums[albumIndex]];
-                    await PlayDatabaseTracks(player, result, wantedAlbumIndex: albumIndex, doModifyOriginalResponse: true).ConfigureAwait(false);
+                    await PlayDatabaseTracks(player, result, doModifyOriginalResponse: true).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
