@@ -8,6 +8,8 @@ using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Extensions;
 using PPMusicBot.Services;
 using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
 try
 {
@@ -21,15 +23,23 @@ try
         options.ServicesStartConcurrently = false;
         options.ServicesStopConcurrently = false;
     });
-    var logsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PPMusicBotLogs", "logs/ppmusicbot-.txt");
-    var loggerConfiguration = new LoggerConfiguration()
+    string regularLogsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PPMusicBotLogs", "logs/ppmusicbot-.log");
+    string errorLogsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PPMusicBotLogs", "logs/ppmusicbot-error-.log");
+    LoggerConfiguration loggerConfiguration = new LoggerConfiguration()
         .Enrich.FromLogContext()
         .WriteTo.File(
-            path: logsPath,
+            path: regularLogsPath,
             rollingInterval: RollingInterval.Day,
             retainedFileCountLimit: 30,
             shared: true)
-        .WriteTo.Console(theme: AnsiConsoleTheme.Literate);
+        .WriteTo.Console(theme: AnsiConsoleTheme.Literate)
+        .WriteTo.File(
+            path: errorLogsPath,
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            shared: true,
+            restrictedToMinimumLevel: LogEventLevel.Error
+        );
 
     if (isProduction)
     {

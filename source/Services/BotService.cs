@@ -352,12 +352,11 @@ namespace PPMusicBot.Services
             return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.SourceName}. \n ```Error: {eventArgs.Exception.Cause}```";
         }
         // Never had this happen before, needs testing.
-        private Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)
+        private async Task OnTrackStuck(object sender, TrackStuckEventArgs eventArgs)
         {
-            _logger.LogWarning("Track stuck.");
-            //VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
-            //await pl.SkipAsync();
-            return Task.CompletedTask;
+            _logger.LogWarning("Track stuck, skipping.");
+            VoteLavalinkPlayer pl = (VoteLavalinkPlayer)eventArgs.Player;
+            await pl.SkipAsync();
         }
         private async Task OnReady()
         {
@@ -386,12 +385,11 @@ namespace PPMusicBot.Services
             await _interactionService.ExecuteCommandAsync(context, _serviceProvider);
         }
 
-        private async Task OnInteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result)
+        private async Task OnInteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result) // Sadly this does not preserve the error context, I might have to implement error handling into the module code.
         {
             if (!result.IsSuccess)
             {
                 _logger.LogError($"Interaction executed but failed: {result.ErrorReason} {result.Error}");
-                
                 switch (result.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
