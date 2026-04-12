@@ -280,7 +280,7 @@ namespace PPMusicBot.Services
                 bool wasPaused = false;
                 if (_lastPlayerError.TryGetValue(eventArgs.Player.GuildId, out var dateTime))
                 {
-                    if (((DateTime.UtcNow - dateTime) < TimeSpan.FromSeconds(10)) && eventArgs.Player.State == PlayerState.Paused)
+                    if (((DateTime.UtcNow - dateTime) < TimeSpan.FromSeconds(10)) && eventArgs.Player.State != PlayerState.Paused)
                     {
                         // if there was an error from this player less than 10 seconds ago, pause the player.
                         await eventArgs.Player.PauseAsync();
@@ -294,7 +294,7 @@ namespace PPMusicBot.Services
                     SocketTextChannel textChannel = (SocketTextChannel)await _botClient.GetChannelAsync((ulong)textChannelID);
                     if (textChannel is not null && eventArgs != null)
                     {
-                        if (wasPaused)
+                        if (wasPaused && eventArgs.Player.State != PlayerState.Paused)
                         {
                             await textChannel.SendMessageAsync("The player was paused due to too many errors happening in a short span of time.");
                             return;
