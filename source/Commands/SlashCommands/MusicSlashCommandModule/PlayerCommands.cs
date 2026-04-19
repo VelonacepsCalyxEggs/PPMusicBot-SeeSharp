@@ -1,7 +1,11 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
+using Lavalink4NET.Clients;
 using Lavalink4NET.Players;
 using PPMusicBot.Classes;
+using System.Diagnostics;
+using System.Text;
 using static PPMusicBot.Helpers.Helpers;
 namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 {
@@ -190,6 +194,56 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 _logger.LogError(ex, ex.Message);
                 throw;
             }
+        }
+
+        [SlashCommand("status", "Dumps cool info about the current state of the bot.", runMode: RunMode.Async)]
+        public async Task StatusAsync()
+        {
+            var player = await GetPlayerAsync().ConfigureAwait(false);
+            bool playerExists = true;
+            if (player is null)
+            {
+                playerExists = false;
+            }
+            if (Context.User is SocketGuildUser guildUser)
+            {
+                bool isAdmin = guildUser.GuildPermissions.Administrator;
+
+                if (!isAdmin)
+                    await RespondAsync("You need to have admin permissions to execute this command.").ConfigureAwait(false);
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Player Exists: " + playerExists);
+            if (playerExists)
+            {
+                sb.AppendLine("Player State: " + player!.State.ToString());
+                sb.AppendLine("Player API Client: " + player!.ApiClient.Endpoints.BaseAddress);
+                sb.AppendLine("Player API Information: " + player!.ApiClient.Endpoints.Information);
+                sb.AppendLine("Player Is Paused: " + player!.IsPaused);
+                sb.AppendLine("Player Position: " + player!.Position);
+                sb.AppendLine("Player Repeat Mode: " + player!.RepeatMode.ToString());
+                if (player.VoiceServer.HasValue)
+                    sb.AppendLine("Player Voice Server: " + player!.VoiceServer.Value.Endpoint.ToString());
+                sb.AppendLine("Player Voice Channel Id: " + player!.VoiceState.VoiceChannelId);
+                sb.AppendLine("Player Connection State: " + player!.ConnectionState.ToString());
+                if (player.CurrentItem != null)
+                {
+                    sb.AppendLine("Player Current Item: " + player!.CurrentItem.ToString());
+                    if (player.CurrentItem.Track != null)
+                    {
+                        sb.AppendLine("Player Current Track: " + player!.CurrentItem.Reference.Track!.Uri!.OriginalString);
+                    }
+                }
+                sb.AppendLine("Player Tracks in Queue: " + player!.Queue.Count());
+            }
+
+
+            await RespondAsync(
+            embed: new EmbedBuilder()
+            {
+                Title = "Status",
+                Description = sb.ToString()
+            }.Build()).ConfigureAwait(false);
         }
     }
 }
