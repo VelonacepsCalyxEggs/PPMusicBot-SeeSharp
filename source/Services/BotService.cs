@@ -185,6 +185,7 @@ namespace PPMusicBot.Services
             _botClient.InteractionCreated += OnInteractionCreated;
             _interactionService.InteractionExecuted += OnInteractionExecuted;
             _audioService.Players.PlayerCreated += OnPlayerCreated;
+            _audioService.Players.PlayerStateChanged += OnPlayerStateChanged;
             _audioService.TrackStuck += OnTrackStuck;
             _audioService.TrackException += OnTrackException;
             _audioService.TrackEnded += OnTrackEnded;
@@ -199,6 +200,7 @@ namespace PPMusicBot.Services
             _botClient.InteractionCreated -= OnInteractionCreated;
             _interactionService.InteractionExecuted -= OnInteractionExecuted;
             _audioService.Players.PlayerCreated -= OnPlayerCreated;
+            _audioService.Players.PlayerStateChanged -= OnPlayerStateChanged;
             _audioService.TrackStuck -= OnTrackStuck;
             _audioService.TrackException -= OnTrackException;
             _audioService.TrackEnded -= OnTrackEnded;
@@ -250,7 +252,12 @@ namespace PPMusicBot.Services
             }
             return;
         }
-
+        private Task OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs eventArgs)
+        {
+            _logger.LogInformation("Player state changed: {eventArgs.State.ToString()}", eventArgs.State.ToString());
+            _logger.LogInformation("Player connection state: {eventArgs.Player.ConnectionState.ToString()}", eventArgs.Player.ConnectionState.ToString());
+            return Task.CompletedTask;
+        }
         private Task OnTrackEnded(object sender, TrackEndedEventArgs eventArgs)
         {
             _logger.LogInformation("Track Ended.");
@@ -328,11 +335,13 @@ namespace PPMusicBot.Services
             {
                 // If service is unavailable, we should drop all tracks from this host.
                 await player.Queue.RemoveAllAsync(t => t.Track?.Uri?.Host == eventArgs.Track?.Uri?.Host);
+                await player.SkipAsync();
                 return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host} due to it being unavailable, all tracks from that host were removed from the queue.";
             }
             else if (eventArgs.Exception.Cause == "java.lang.RuntimeException: Not success status code: 500")
             {
                 await player.Queue.RemoveAllAsync(t => t.Track?.Uri?.Host == eventArgs.Track?.Uri?.Host);
+                await player.SkipAsync();
                 return $"There was a problem loading the track {eventArgs.Track?.Title} from {eventArgs.Track?.Uri?.Host} due to it returning an internal server error, all tracks from that host were removed from the queue.";
             }
             else if (eventArgs.Exception.Cause == "java.lang.RuntimeException: Not success status code: 404")

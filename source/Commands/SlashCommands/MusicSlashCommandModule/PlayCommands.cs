@@ -320,7 +320,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, result: result).ConfigureAwait(false)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Content = string.Empty;
+                    msg.Content = "Response.";
                     msg.Embed = await BuildPlayingEmbed(player.Queue.Count, player.State, result: result).ConfigureAwait(false); ;
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
@@ -364,7 +364,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, result: result).ConfigureAwait(false)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Content = string.Empty;
+                    msg.Content = "Response.";
                     msg.Embed = await BuildPlayingEmbed(player.Queue.Count, player.State, result: result).ConfigureAwait(false);
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
