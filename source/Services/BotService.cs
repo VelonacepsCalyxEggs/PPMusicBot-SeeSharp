@@ -254,8 +254,8 @@ namespace PPMusicBot.Services
         }
         private Task OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs eventArgs)
         {
-            _logger.LogInformation("Player state changed: {eventArgs.State.ToString()}", eventArgs.State.ToString());
-            _logger.LogInformation("Player connection state: {eventArgs.Player.ConnectionState.ToString()}", eventArgs.Player.ConnectionState.ToString());
+            _logger.LogInformation($"Player state changed: {eventArgs.State.ToString()}");
+            _logger.LogInformation($"Player connection state: {eventArgs.Player.ConnectionState.ToString()}");
             return Task.CompletedTask;
         }
         private Task OnTrackEnded(object sender, TrackEndedEventArgs eventArgs)

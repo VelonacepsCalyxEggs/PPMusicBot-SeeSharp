@@ -1,9 +1,12 @@
-﻿using Microsoft.Extensions.Options;
+﻿using KenobiRadio.Shared.Models.Radio.Parents;
+using KenobiRadio.Shared.Models.Web;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using static PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule.MusicSlashCommandModule;
@@ -21,6 +24,7 @@ namespace PPMusicBot.Services
         private readonly int MAX_SUGGESTIONS;
 
         public readonly Dictionary<ulong, (KenobiAPISearchResult Result, DateTime Timestamp)> SuggestionCache = [];
+        public readonly Dictionary<ulong, (KenobiAPIV2SearchResult Result, DateTime Timestamp)> SuggestionCacheNew = [];
         private static readonly TimeSpan CacheTimeout = TimeSpan.FromMinutes(10);
 
         public KenobiAPISearchEngineService(ILogger<KenobiAPISearchEngineService> logger, IConfiguration configuration)
@@ -65,6 +69,16 @@ namespace PPMusicBot.Services
                     {
                         if (parsedResponse.Suggestion)
                         {
+                            if (parsedResponse.Tracks.Count == 1 && parsedResponse.Albums.Count == 0)
+                            {
+                                parsedResponse.Suggestion = false;
+                                return parsedResponse;
+                            }
+                            else if(parsedResponse.Albums.Count == 1 && parsedResponse.Tracks.Count == 0)
+                            {
+                                parsedResponse.Suggestion = false;
+                                return parsedResponse;
+                            }
                             SuggestionCache.Add(interactionId, (parsedResponse, DateTime.UtcNow));
                             CleanupOldEntries();
                         }
@@ -83,7 +97,78 @@ namespace PPMusicBot.Services
                 return null;
             }
         }
+        public async Task<KenobiAPIV2SearchResult> SearchNew(string query, ulong interactionId, SearchType searchType)
+        {
+            var url = "https://dev.funckenobi42.space/api/" + "music" + (searchType == SearchType.Albums ? "/albums/get" : "/tracks/get");
+            url = url + $"?{(searchType == SearchType.Albums ? "Name" : "Title")}={query}&Limit=5&Whole=true";
+            HttpResponseMessage? response = await _httpClient.GetAsync(url) ?? throw new Exception("Response is null");
+            response.EnsureSuccessStatusCode();
+            try
+            {
+                if (searchType == SearchType.Tracks)
+                {
 
+                    var options = new JsonSerializerSettings()
+                    {
+                        ContractResolver = new CamelCasePropertyNamesContractResolver()
+                    };
+                    var parsedData = JsonConvert.DeserializeObject<ResponseWrapper<List<TrackParentDto>>>(await response.Content.ReadAsStringAsync(), options);
+
+                    if (parsedData != null)
+                    {
+                        var result = new KenobiAPIV2SearchResult(parsedData.Result, [], suggestion: false, null);
+                        if (parsedData.Result.Count > 1)
+                        {
+                            result.Suggestion = true;
+                            SuggestionCacheNew.Add(interactionId, (result, DateTime.UtcNow));
+                            CleanupOldEntries();
+                            return result;
+                        }
+                        if (parsedData.Result.Count > 5)
+                            throw new ArgumentOutOfRangeException("API returned more than 5 items.");
+                        return result;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Response is null or nothing was found.");
+                        throw new Exception("API returned an empty response.");
+                    }
+                }
+                else
+                {
+                    var options = new JsonSerializerSettings()
+                    {
+                        ContractResolver = new CamelCasePropertyNamesContractResolver()
+                    };
+                    var parsedData = JsonConvert.DeserializeObject<ResponseWrapper<List<AlbumParentDto>>>(await response.Content.ReadAsStringAsync(), options);
+
+                    if (parsedData != null)
+                    {
+                        var result = new KenobiAPIV2SearchResult([], parsedData.Result, suggestion: false, null);
+                        if (parsedData.Result.Count > 1)
+                        {
+                            result.Suggestion = true;
+                            SuggestionCacheNew.Add(interactionId, (result, DateTime.UtcNow));
+                            CleanupOldEntries();
+                            return result;
+                        }
+                        if (parsedData.Result.Count > 5)
+                            throw new ArgumentOutOfRangeException("API returned more than 5 items.");
+                        return result;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Response is null or nothing was found.");
+                        throw new Exception("API returned an empty response.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Could not parse API response. {ex.Message} {ex.StackTrace}");
+                throw;
+            }
+        }
         public async Task<KenobiAPISearchResult?> SearchRandom(int amount)
         {
             if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
@@ -201,6 +286,13 @@ namespace PPMusicBot.Services
     {
         public List<KenobiAPIModels.ScoredTrack> Tracks = Tracks;
         public List<KenobiAPIModels.ScoredAlbum> Albums = Albums;
+        public bool Suggestion = suggestion;
+        public Exception? Error = error;
+    };
+    public class KenobiAPIV2SearchResult(List<TrackParentDto> Tracks, List<AlbumParentDto> Albums, bool suggestion = false, Exception? error = null)
+    {
+        public List<TrackParentDto> Tracks = Tracks;
+        public List<AlbumParentDto> Albums = Albums;
         public bool Suggestion = suggestion;
         public Exception? Error = error;
     };

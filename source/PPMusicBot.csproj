@@ -26,4 +26,9 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="KenobiRadio.Shared">
+      <HintPath>..\..\KenobiRadio\Shared\bin\Release\net10.0\publish\KenobiRadio.Shared.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>
