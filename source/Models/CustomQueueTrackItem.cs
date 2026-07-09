@@ -1,4 +1,5 @@
-﻿using Lavalink4NET.Players;
+﻿using KenobiRadio.Shared.Models.Radio.Parents;
+using Lavalink4NET.Players;
 using Lavalink4NET.Tracks;
 using System;
 using System.Collections.Generic;
@@ -8,13 +9,12 @@ using System.Threading.Tasks;
 
 namespace PPMusicBot.Models
 {
-    public class CustomQueueTrackItem(LavalinkTrack track, KenobiAPIModels.MusicTrack musicTrack) : ITrackQueueItem
+    public class CustomQueueTrackItem(LavalinkTrack track, TrackParentDto musicTrack) : ITrackQueueItem
     {
         public TrackReference Reference => new(track);
 
         LavalinkTrack? Track => Reference.Track;
-
         string Identifier => Reference.Identifier!;
-        public KenobiAPIModels.MusicTrack MusicTrack => musicTrack;
+        public TrackParentDto CustomTrack => musicTrack;
     }
 }

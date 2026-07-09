@@ -4,9 +4,7 @@ namespace PPMusicBot.Classes;
 public static class PlayerExtensions
 {
     public static CustomQueueTrackItem? GetCustomData(this ITrackQueueItem item)
-    {
-        return (item as CustomQueueTrackItem);
-    }
+        => item as CustomQueueTrackItem;
     public static bool TryGetCustomData(this LavalinkPlayer player, out CustomQueueTrackItem? data)
     {
         if (player.CurrentItem is CustomQueueTrackItem customItem)
