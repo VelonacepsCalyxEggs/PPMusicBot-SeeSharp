@@ -140,7 +140,7 @@ namespace PPMusicBot.Helpers
                 return new EmbedBuilder()
                 {
                     Title = "Currently playing:",
-                    Description = $"**{kenobiTrack.Title}** by **{artist}** from **{album}**",
+                    Description = $"**{kenobiTrack.Title}** by **{artist}** from **{album!.NameTransliterated}**",
                     Footer = new EmbedFooterBuilder
                     {
                         Text = $"Duration: {durationText} | {player.Position?.Position:hh\\:mm\\:ss}"

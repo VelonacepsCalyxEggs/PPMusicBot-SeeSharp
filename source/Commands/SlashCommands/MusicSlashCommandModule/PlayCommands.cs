@@ -156,9 +156,17 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 
                 if (player is null)
                     return;
-
-                var result = await _kenobiAPISearchEngineService.Search(title, artist, Context.Interaction.Id, searchType).ConfigureAwait(false);
-
+                KenobiAPIV2SearchResult result;
+                try
+                {
+                    result = await _kenobiAPISearchEngineService.Search(title, artist, Context.Interaction.Id, searchType).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "API Search failed.");
+                    await FollowupAsync(ex.Message).ConfigureAwait(false);
+                    return;
+                }
                 if (result is null)
                 {
                     await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
@@ -291,6 +299,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     }
                     var position = await player.PlayAsync(new CustomQueueTrackItem(loadedTrack.Track, dbTrack)).ConfigureAwait(false);
                 }
+                return;
             } 
             var track = result.Tracks.FirstOrDefault();
             if (track is not null)
@@ -298,7 +307,10 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 var tracks = await _audioService.Tracks.LoadTracksAsync($"https://www.funckenobi42.space/api/files/stream/{track.MusicFile.Id.ToString()}", TrackSearchMode.None);
                 if (tracks.Track is null)
                 {
-                    await ModifyOriginalResponseAsync(async msg => await FollowupAsync("Lavalink could not load the track.").ConfigureAwait(false)).ConfigureAwait(false);
+                    await ModifyOriginalResponseAsync(msg =>
+                    {
+                        msg.Content = "Lavalink could not load the track.";
+                    }).ConfigureAwait(false);
                     return;
                 }
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false)).ConfigureAwait(false);
@@ -308,19 +320,20 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
                 var position = await player.PlayAsync(new CustomQueueTrackItem(tracks.Track, track)).ConfigureAwait(false);
+                return;
             }
             else
             {
                 var album = result.Albums.FirstOrDefault();
                 if (album is null)
                 {
-                    await ModifyOriginalResponseAsync(async msg => await FollowupAsync("Lavalink could not load the tracks.").ConfigureAwait(false)).ConfigureAwait(false);
+                    await ModifyOriginalResponseAsync(async msg => await FollowupAsync("There was no album to load.").ConfigureAwait(false)).ConfigureAwait(false);
                     return;
                 }
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
-                    msg.Embed = new EmbedBuilder() { Title = "Album from the new system, display not yet configured." }.Build();
+                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false);
                     msg.Components = new ComponentBuilder().Build();
                 }).ConfigureAwait(false);
                 foreach (var disc in album.Discs)
@@ -333,6 +346,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     }
 
                 }
+                return;
             }
         }
 
