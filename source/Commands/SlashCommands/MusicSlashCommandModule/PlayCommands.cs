@@ -167,7 +167,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     await FollowupAsync(ex.Message).ConfigureAwait(false);
                     return;
                 }
-                if (result is null)
+                if (result is null || result.Tracks.Count == 0 && result.Albums.Count == 0)
                 {
                     await FollowupAsync("The database did not find any tracks.").ConfigureAwait(false);
                     return;
@@ -294,7 +294,9 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     var loadedTrack = await _audioService.Tracks.LoadTracksAsync($"https://www.funckenobi42.space/api/files/stream/{dbTrack.MusicFile.Id.ToString()}", TrackSearchMode.None);
                     if (loadedTrack.Track is null)
                     {
-                        await ModifyOriginalResponseAsync(async msg => await FollowupAsync($"Lavalink could not load the track with url {$"https://www.funckenobi42.space/api/files/stream/{dbTrack.MusicFile.Id.ToString()}"}").ConfigureAwait(false)).ConfigureAwait(false);
+                        await ModifyOriginalResponseAsync(msg =>
+                            msg.Content = "Lavalink could not load the track."
+                        ).ConfigureAwait(false);
                         return;
                     }
                     var position = await player.PlayAsync(new CustomQueueTrackItem(loadedTrack.Track, dbTrack)).ConfigureAwait(false);
@@ -304,6 +306,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             var track = result.Tracks.FirstOrDefault();
             if (track is not null)
             {
+                _logger.LogInformation("Started loading singular track.");
                 var tracks = await _audioService.Tracks.LoadTracksAsync($"https://www.funckenobi42.space/api/files/stream/{track.MusicFile.Id.ToString()}", TrackSearchMode.None);
                 if (tracks.Track is null)
                 {
@@ -327,9 +330,13 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 var album = result.Albums.FirstOrDefault();
                 if (album is null)
                 {
-                    await ModifyOriginalResponseAsync(async msg => await FollowupAsync("There was no album to load.").ConfigureAwait(false)).ConfigureAwait(false);
+                    await ModifyOriginalResponseAsync(msg =>
+                    {
+                        msg.Content = "There was no album to load.";
+                    }).ConfigureAwait(false);
                     return;
                 }
+                _logger.LogInformation("Started loading albums track.");
                 if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false)).ConfigureAwait(false);
                 else await ModifyOriginalResponseAsync(async msg =>
                 {
