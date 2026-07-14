@@ -115,7 +115,7 @@ namespace PPMusicBot.Helpers
                     Title = posIsZero ? "Playing:" : "Added to queue:",
                     Description = $"**{track.Title}** by **{artist}** from **{album!.NameTransliterated}**",
                     Footer = new EmbedFooterBuilder { Text = $"Duration: {durationText} | Position: {tweakedPos}" },
-                    ImageUrl = GetImageUrl(track.CoverArt) ?? GetImageUrl(album!.CoverArt, "album") ?? GetDefaultImageUrl()
+                    ImageUrl = GetImageUrl(track.CoverArt) ?? GetImageUrl(album!.CoverArt) ?? GetDefaultImageUrl()
                 }.Build();
             }
 
@@ -145,7 +145,7 @@ namespace PPMusicBot.Helpers
                     {
                         Text = $"Duration: {durationText} | {player.Position?.Position:hh\\:mm\\:ss}"
                     },
-                    ImageUrl = GetImageUrl(kenobiTrack.CoverArt) ?? GetImageUrl(album!.CoverArt, "album") ?? GetDefaultImageUrl()
+                    ImageUrl = GetImageUrl(kenobiTrack.CoverArt) ?? GetImageUrl(album!.CoverArt) ?? GetDefaultImageUrl()
                 }.Build();
             }
             else
@@ -241,11 +241,11 @@ namespace PPMusicBot.Helpers
             return artworkUri?.OriginalString ?? string.Empty;
         }
 
-        private static string? GetImageUrl(DatabaseFileChildDto? coverArt, string type = "track")
+        private static string? GetImageUrl(DatabaseFileChildDto? coverArt)
         {
             if (coverArt is null) return null;
             string fileName = coverArt.Hash + GetExtensionFromMimeType(coverArt.Type);
-            return $"https://www.funckenobi42.space/images/coverart/{type}/{fileName}";
+            return $"https://www.funckenobi42.space/images/coverart/{fileName}";
         }
 
         private static string GetExtensionFromMimeType(string type)
