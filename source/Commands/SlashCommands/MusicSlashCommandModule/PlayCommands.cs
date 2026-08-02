@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Text;
 using static PPMusicBot.Helpers.Helpers;
 using static PPMusicBot.Services.KenobiAPISearchEngineService;
+using static System.Net.Mime.MediaTypeNames;
 namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
 {
     public sealed partial class MusicSlashCommandModule
@@ -194,8 +195,10 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         var trackCount = Math.Min(result.Tracks.Count, 15);
                         for (var i = 0; i < trackCount; i++)
                         {
+                            string name = result.Tracks[i].Title.Length <= 64 ? result.Tracks[i].Title : result.Tracks[i].Title[..64];
+                            string artistName = result.Tracks[i].Artists.FirstOrDefault()!.NameTransliterated.Length <= 64 ? result.Tracks[i].Artists.FirstOrDefault()!.NameTransliterated : result.Tracks[i].Artists.FirstOrDefault()!.NameTransliterated[..64];
                             sb.AppendLine($"{result.Tracks[i].Title} by {string.Join(',', result.Tracks[i].Artists.Select(a => a.NameTransliterated))}");
-                            menuBuilder.AddOption($"Track: {result.Tracks[i].TitleTransliterated} by {result.Tracks[i].Artists.FirstOrDefault()!.NameTransliterated}", $"track_{i}");
+                            menuBuilder.AddOption($"Track: {name} by {artistName}", $"track_{i}");
                         }
                     }
 
@@ -206,8 +209,9 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         var albumCount = Math.Min(result.Albums.Count, remainingSlots);
                         for (var i = 0; i < albumCount; i++)
                         {
-                            sb.AppendLine($"{result.Albums[i].NameTransliterated}");
-                            menuBuilder.AddOption($"Album: {result.Albums[i].Name}", $"album_{i}");
+                            string name = result.Albums[i].NameTransliterated.Length <= 64 ? result.Albums[i].NameTransliterated : result.Tracks[i].Title[..64];
+                            sb.AppendLine(name);
+                            menuBuilder.AddOption($"Album: {name}", $"album_{i}");
                         }
                     }
 
