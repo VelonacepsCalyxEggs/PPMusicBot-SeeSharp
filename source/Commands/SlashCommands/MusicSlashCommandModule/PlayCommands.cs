@@ -7,6 +7,7 @@ using Lavalink4NET.Tracks;
 using PPMusicBot.Models;
 using PPMusicBot.Services;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using static PPMusicBot.Helpers.Helpers;
 using static PPMusicBot.Services.KenobiAPISearchEngineService;
@@ -285,17 +286,28 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         {
             if (result.Tracks.Count > 1 && playAllTracks)
             {
-
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: new EmbedBuilder() { Title = $"Selected {result.Tracks.Count} random tracks from the database.", Description = "Use /queue to view what tracks were added."}.Build()).ConfigureAwait(false);
-                else await ModifyOriginalResponseAsync(async msg =>
+                if (shuffle)
+                    Random.Shared.Shuffle(CollectionsMarshal.AsSpan(result.Tracks));
+                Embed embed;
+                if (!doModifyOriginalResponse)
                 {
-                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, player.State, artworkService: _artworkService, null, result).ConfigureAwait(false); ;
-                    msg.Components = new ComponentBuilder().Build();
-                }).ConfigureAwait(false);
+                    embed = new EmbedBuilder() { Title = $"Selected {result.Tracks.Count} random tracks from the database.", Description = "Use /queue to view what tracks were added." }.Build();
+                    await FollowupAsync(embed: embed).ConfigureAwait(false); ;
+                }
+                else
+                {
+                    embed = await BuildPlayingEmbed(player.Queue.Count, player.State, artworkService: _artworkService, null, result).ConfigureAwait(false);
+                    await ModifyOriginalResponseAsync(async msg =>
+                    {
+                        msg.Content = "Loading!";
+                        msg.Embed = embed;
+                        msg.Components = new ComponentBuilder().Build();
+                    }).ConfigureAwait(false);
+                }
                 for (int i = 0; i < result.Tracks.Count; i++)
                 {
                     var dbTrack = result.Tracks[i];
-                    var loadedTrack = await _audioService.Tracks.LoadTracksAsync($"https://www.funckenobi42.space/api/files/stream/{dbTrack.MusicFile.Id.ToString()}", TrackSearchMode.None);
+                    var loadedTrack = await _audioService.Tracks.LoadTracksAsync($"https://www.funckenobi42.space/api/files/stream/{dbTrack.MusicFile.Id}", TrackSearchMode.None);
                     if (loadedTrack.Track is null)
                     {
                         await ModifyOriginalResponseAsync(msg =>
@@ -305,59 +317,75 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     }
                     var position = await player.PlayAsync(new CustomQueueTrackItem(loadedTrack.Track, dbTrack)).ConfigureAwait(false);
                 }
-                return;
-            } 
-            var track = result.Tracks.FirstOrDefault();
-            if (track is not null)
-            {
-                _logger.LogInformation("Started loading singular track.");
-                var tracks = await _audioService.Tracks.LoadTracksAsync($"https://www.funckenobi42.space/api/files/stream/{track.MusicFile.Id.ToString()}", TrackSearchMode.None);
-                if (tracks.Track is null)
+                await ModifyOriginalResponseAsync(async msg =>
                 {
-                    await ModifyOriginalResponseAsync(msg =>
-                    {
-                        msg.Content = "Lavalink could not load the track.";
-                    }).ConfigureAwait(false);
-                    return;
-                }
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false)).ConfigureAwait(false);
-                else await ModifyOriginalResponseAsync(async msg =>
-                {
-                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, player.State, artworkService: _artworkService, null, result).ConfigureAwait(false); ;
-                    msg.Components = new ComponentBuilder().Build();
-                }).ConfigureAwait(false);
-                var position = await player.PlayAsync(new CustomQueueTrackItem(tracks.Track, track)).ConfigureAwait(false);
-                return;
+                    msg.Content = "Loaded!";
+                    msg.Embed = embed;
+                }).ConfigureAwait(false); // Experimental way of indicating loading status of tracks.
             }
             else
             {
-                var album = result.Albums.FirstOrDefault();
-                if (album is null)
+                var track = result.Tracks.FirstOrDefault();
+                if (track is not null)
                 {
-                    await ModifyOriginalResponseAsync(msg =>
+                    _logger.LogInformation("Started loading singular track.");
+                    var tracks = await _audioService.Tracks.LoadTracksAsync($"https://www.funckenobi42.space/api/files/stream/{track.MusicFile.Id}", TrackSearchMode.None);
+                    if (tracks.Track is null)
                     {
-                        msg.Content = "There was no album to load.";
-                    }).ConfigureAwait(false);
-                    return;
-                }
-                _logger.LogInformation("Started loading albums track.");
-                if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false)).ConfigureAwait(false);
-                else await ModifyOriginalResponseAsync(async msg =>
-                {
-                    msg.Embed = await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false);
-                    msg.Components = new ComponentBuilder().Build();
-                }).ConfigureAwait(false);
-                foreach (var disc in album.Discs)
-                {
-                    foreach (var dbTrack in disc.Tracks)
-                    {
-                        var loaded = await _audioService.Tracks.LoadTrackAsync($"https://www.funckenobi42.space/api/files/stream/{dbTrack.MusicFile.Id.ToString()}", TrackSearchMode.None).ConfigureAwait(false);
-                        if (loaded is null) { continue; }
-                        await player.PlayAsync(new CustomQueueTrackItem(loaded, dbTrack)).ConfigureAwait(false);
+                        await ModifyOriginalResponseAsync(msg =>
+                        {
+                            msg.Content = "Lavalink could not load the track.";
+                        }).ConfigureAwait(false);
+                        return;
                     }
-
+                    if (!doModifyOriginalResponse) await FollowupAsync(embed: await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false)).ConfigureAwait(false);
+                    else await ModifyOriginalResponseAsync(async msg =>
+                    {
+                        msg.Embed = await BuildPlayingEmbed(player.Queue.Count, player.State, artworkService: _artworkService, null, result).ConfigureAwait(false); ;
+                        msg.Components = new ComponentBuilder().Build();
+                    }).ConfigureAwait(false);
+                    var position = await player.PlayAsync(new CustomQueueTrackItem(tracks.Track, track)).ConfigureAwait(false);
                 }
-                return;
+                else
+                {
+                    var album = result.Albums.FirstOrDefault();
+                    if (album is null)
+                    {
+                        await ModifyOriginalResponseAsync(msg =>
+                        {
+                            msg.Content = "There was no album to load.";
+                        }).ConfigureAwait(false);
+                        return;
+                    }
+                    _logger.LogInformation("Started loading albums track.");
+                    Embed embed = await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false);
+                    if (!doModifyOriginalResponse) await FollowupAsync(embed: embed, text: "Loading!").ConfigureAwait(false);
+                    else await ModifyOriginalResponseAsync(async msg =>
+                    {
+                        msg.Content = "Loading!";
+                        msg.Embed = embed;
+                        msg.Components = new ComponentBuilder().Build();
+                    }).ConfigureAwait(false);
+                    if (shuffle)
+                        album.Discs = album.Discs.Shuffle().ToList();
+                    foreach (var disc in album.Discs)
+                    {
+                        if (shuffle)
+                            disc.Tracks = disc.Tracks.Shuffle().ToList();
+                        foreach (var dbTrack in disc.Tracks)
+                        {
+                            var loaded = await _audioService.Tracks.LoadTrackAsync($"https://www.funckenobi42.space/api/files/stream/{dbTrack.MusicFile.Id}", TrackSearchMode.None).ConfigureAwait(false);
+                            if (loaded is null) { continue; }
+                            await player.PlayAsync(new CustomQueueTrackItem(loaded, dbTrack)).ConfigureAwait(false);
+                        }
+                    }
+                    await ModifyOriginalResponseAsync(async msg =>
+                    {
+                        msg.Content = "Loaded!";
+                        msg.Embed = embed;
+                        msg.Components = new ComponentBuilder().Build();
+                    }).ConfigureAwait(false); // Experimental way of indicating loading status of tracks.
+                }
             }
         }
 
