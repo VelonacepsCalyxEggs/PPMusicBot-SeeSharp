@@ -56,17 +56,15 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         /// <summary>
         ///     Updates the player volume asynchronously.
         /// </summary>
-        /// <param name="volume">the volume (1 - 1000)</param>
+        /// <param name="volume">the volume (1 - 200)</param>
         /// <returns>a task that represents the asynchronous operation</returns>
-        [SlashCommand("volume", description: "Sets the player volume (0 - 200%)", runMode: RunMode.Async)]
-        public async Task Volume(int volume = 100)
+        [SlashCommand("volume", description: "Sets the player volume (1 - 200)", runMode: RunMode.Async)]
+        public async Task Volume(
+            [MaxValue(200)]
+            [MinValue(1)]
+            int volume = 100
+            )
         {
-            if (volume is > 200 or < 0)
-            {
-                await RespondAsync("Volume out of range: 0% - 200%!").ConfigureAwait(false);
-                return;
-            }
-
             var player = await GetPlayerAsync(connectToVoiceChannel: false).ConfigureAwait(false);
 
             if (player is null)
