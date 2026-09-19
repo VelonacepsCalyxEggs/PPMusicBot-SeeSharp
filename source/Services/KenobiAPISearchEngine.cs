@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using PPMusicBot.Classes;
 using PPMusicBot.Models;
+using System.Collections.Concurrent;
 using System.Text;
 using static PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule.MusicSlashCommandModule;
 
@@ -13,7 +14,8 @@ namespace PPMusicBot.Services
     {
         private readonly ILogger<KenobiAPISearchEngineService> _logger;
         private readonly HttpClient _httpClient;
-        public readonly Dictionary<ulong, (KenobiAPIV2SearchResult Result, DateTime Timestamp)> SuggestionCache = [];
+        public readonly ConcurrentDictionary<ulong, (KenobiAPIV2SearchResult Result, DateTime Timestamp)> SuggestionCache = [];
+        public readonly ConcurrentDictionary<ulong, (List<uint>? DiscNumbersToPlay, bool Shuffle)> PendingSuggestionOptions = [];
         private static readonly TimeSpan CacheTimeout = TimeSpan.FromMinutes(10);
 
         public KenobiAPISearchEngineService(ILogger<KenobiAPISearchEngineService> logger)
@@ -51,7 +53,7 @@ namespace PPMusicBot.Services
                         if (parsedData.Result.Count > 1)
                         {
                             result.Suggestion = true;
-                            SuggestionCache.Add(interactionId, (result, DateTime.UtcNow));
+                            SuggestionCache.TryAdd(interactionId, (result, DateTime.UtcNow));
                             CleanupOldEntries();
                             return result;
                         }
@@ -79,7 +81,7 @@ namespace PPMusicBot.Services
                         if (parsedData.Result.Count > 1)
                         {
                             result.Suggestion = true;
-                            SuggestionCache.Add(interactionId, (result, DateTime.UtcNow));
+                            SuggestionCache.TryAdd(interactionId, (result, DateTime.UtcNow));
                             CleanupOldEntries();
                             return result;
                         }
@@ -146,7 +148,8 @@ namespace PPMusicBot.Services
 
             foreach (var key in oldKeys)
             {
-                SuggestionCache.Remove(key);
+                SuggestionCache.Remove(key, out _);
+                PendingSuggestionOptions.TryRemove(key, out _);
             }
         }
 

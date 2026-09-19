@@ -146,8 +146,16 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
         /// <returns>a task that represents the asynchronous operation</returns>
         [SlashCommand("fromdb", description: "Plays music from database only.", runMode: RunMode.Async)]
         public async Task PlayFromDbAsync(
-            string title, string? artist = null,
+            [Summary("title", "Name of a track/album to search for. Does not allow for typos, non-case sensitive.")]
+            string title,
+            [Summary("artist", "Filter by name of the Artist, only when searching for Tracks.")]
+            string? artist = null,
+            [Summary("searchType", "Search for Tracks or Albums")]
             SearchType searchType = SearchType.Tracks,
+            [Summary("discsToPlay", "A comma separated list of numbers, the command will attempt to play the discs with numbers supplied.")]
+            [MaxLength(16)]
+            string? discsToPlay = null,
+            [Summary("shuffle", "Whenever to shuffle the found tracks/albums or not.")]
             bool shuffle = false)
         {
             try
@@ -178,7 +186,19 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                 _logger.LogDebug("TRACKS: " + result.Tracks.Count());
                 _logger.LogDebug("ALBUMS: " + result.Albums.Count());
                 _logger.LogDebug("IS SUGGESTION: " + result.Suggestion);
-
+                List<uint>? discNumbersToPlay = null;
+                if (discsToPlay != null)
+                {
+                    discNumbersToPlay = new List<uint>();
+                    string[] splitString = discsToPlay.Split(',');
+                    foreach (string text in discsToPlay.Split(','))
+                    {
+                        if (uint.TryParse(text, out uint parsed))
+                        {
+                            discNumbersToPlay.Add(parsed);
+                        }
+                    }
+                }
                 if (result.Suggestion)
                 {
                     var menuBuilder = new SelectMenuBuilder()
@@ -186,6 +206,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         .WithCustomId($"suggestion_selector:{Context.Interaction.Id}")
                         .WithMinValues(1)
                         .WithMaxValues(1);
+                    _kenobiAPISearchEngineService.PendingSuggestionOptions.TryAdd(Context.Interaction.Id, (discNumbersToPlay, shuffle));
 
                     StringBuilder sb = new StringBuilder();
                     sb.AppendLine("Maybe you meant:");
@@ -236,8 +257,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                     await FollowupAsync(embed: embed, components: components).ConfigureAwait(false);
                     return;
                 }
-
-                await PlayDatabaseTracks(player, result, shuffle: shuffle).ConfigureAwait(false);
+                await PlayDatabaseTracks(player, result, shuffle: shuffle, discsToPlay: discNumbersToPlay).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -282,7 +302,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             VoteLavalinkPlayer player,
             KenobiAPIV2SearchResult result,
             bool doModifyOriginalResponse = false,
-            bool shuffle = false, bool playAllTracks = false)
+            bool shuffle = false, bool playAllTracks = false, List<uint>? discsToPlay = null)
         {
             if (result.Tracks.Count > 1 && playAllTracks)
             {
@@ -358,7 +378,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         return;
                     }
                     _logger.LogInformation("Started loading albums track.");
-                    Embed embed = await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result).ConfigureAwait(false);
+                    Embed embed = await BuildPlayingEmbed(player.Queue.Count, player.State, _artworkService, null, result, discsToPlay).ConfigureAwait(false);
                     if (!doModifyOriginalResponse) await FollowupAsync(embed: embed, text: "Loading!").ConfigureAwait(false);
                     else await ModifyOriginalResponseAsync(async msg =>
                     {
@@ -370,6 +390,9 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         album.Discs = album.Discs.Shuffle().ToList();
                     foreach (var disc in album.Discs)
                     {
+                        if (discsToPlay != null)
+                            if (!discsToPlay.Contains(disc.Number))
+                                continue;
                         if (shuffle)
                             disc.Tracks = disc.Tracks.Shuffle().ToList();
                         foreach (var dbTrack in disc.Tracks)
@@ -396,7 +419,8 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             {
                 await DeferAsync().ConfigureAwait(false);
                 if (_kenobiAPISearchEngineService.SuggestionCache.TryGetValue(interactionId, out var result1)) {
-                    _kenobiAPISearchEngineService.SuggestionCache.Remove(interactionId);
+                    _kenobiAPISearchEngineService.SuggestionCache.Remove(interactionId, out _);
+                    _kenobiAPISearchEngineService.PendingSuggestionOptions.TryRemove(interactionId, out _);
                 }
                 await ModifyOriginalResponseAsync(msg =>
                 {
@@ -434,20 +458,21 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
                         await FollowupAsync("Unable to connect to voice channel.").ConfigureAwait(false);
                         return;
                     }
+                    _kenobiAPISearchEngineService.PendingSuggestionOptions.TryGetValue(interactionId, out var suggestionOptions);
                     // Parse the selection
                     if (selectedValue.StartsWith("track_"))
                     {
                         var trackIndex = int.Parse(selectedValue.Substring(6));
                         result.Albums.Clear();
                         result.Tracks = [result.Tracks[trackIndex]];
-                        await PlayDatabaseTracks(player, result, doModifyOriginalResponse: true).ConfigureAwait(false);
+                        await PlayDatabaseTracks(player, result, shuffle: suggestionOptions.Shuffle, doModifyOriginalResponse: true).ConfigureAwait(false);
                     }
                     else if (selectedValue.StartsWith("album_"))
                     {
                         var albumIndex = int.Parse(selectedValue.Substring(6));
                         result.Tracks.Clear();
                         result.Albums = [result.Albums[albumIndex]];
-                        await PlayDatabaseTracks(player, result, doModifyOriginalResponse: true).ConfigureAwait(false);
+                        await PlayDatabaseTracks(player, result, shuffle: suggestionOptions.Shuffle, discsToPlay: suggestionOptions.DiscNumbersToPlay, doModifyOriginalResponse: true).ConfigureAwait(false);
                     }
                 }
                 else
@@ -467,7 +492,7 @@ namespace PPMusicBot.Commands.SlashCommands.MusicSlashCommandModule
             }
             finally
             {
-                _kenobiAPISearchEngineService.SuggestionCache.Remove(interactionId);
+                _kenobiAPISearchEngineService.SuggestionCache.Remove(interactionId, out _);
             }
         }
         private PlayQueryType DetermineQueryType(string query)

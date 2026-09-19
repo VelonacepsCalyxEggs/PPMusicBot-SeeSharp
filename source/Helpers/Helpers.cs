@@ -1,5 +1,6 @@
 ﻿using Discord;
 using KenobiRadio.Shared.Models.FileSystem.Children;
+using KenobiRadio.Shared.Models.Radio.Parents;
 using Lavalink4NET.Artwork;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Vote;
@@ -21,7 +22,8 @@ namespace PPMusicBot.Helpers
             PlayerState state,
             ArtworkService? artworkService = null,
             TrackLoadResult? lavalinkResult = null,
-            KenobiAPIV2SearchResult? result = null)
+            KenobiAPIV2SearchResult? result = null,
+            List<uint>? discsToPlay = null)
         {
             bool isExternal = result == null && artworkService != null;
             bool isKenobiApi = lavalinkResult == null;
@@ -33,7 +35,7 @@ namespace PPMusicBot.Helpers
                 return await BuildExternalEmbed(position, state == PlayerState.Playing, artworkService!, (TrackLoadResult)lavalinkResult!);
             }
             else if (isKenobiApi)
-                return BuildKenobiApiEmbed(position, state == PlayerState.Playing, result!);
+                return BuildKenobiApiEmbed(position, state == PlayerState.Playing, result!, discsToPlay);
             else
                 throw new ArgumentException("Both Lavalink result/ArtworkService and KenobiAPI result were null.");
         }
@@ -75,7 +77,7 @@ namespace PPMusicBot.Helpers
             }
         }
 
-        private static Embed BuildKenobiApiEmbed(int position, bool isPlaying, KenobiAPIV2SearchResult result)
+        private static Embed BuildKenobiApiEmbed(int position, bool isPlaying, KenobiAPIV2SearchResult result, List<uint>? discsToPlay = null)
         {
             bool posIsZero = position == 0;
             int tweakedPos = posIsZero && !isPlaying ? position : position + 1;
@@ -84,7 +86,15 @@ namespace PPMusicBot.Helpers
             if (result.Albums.Count != 0)
             {
                 var album = result.Albums[0];
-                var allTracks = album.Discs.SelectMany(d => d.Tracks).ToList();
+                List<TrackParentDto> allTracks;
+                if (discsToPlay == null)
+                {
+                    allTracks = album.Discs.SelectMany(d => d.Tracks).ToList();
+                }
+                else
+                {
+                    allTracks = album.Discs.Where(d => discsToPlay.Contains(d.Number)).SelectMany(d => d.Tracks).ToList();
+                }
                 if (allTracks.Count == 0)
                     throw new ArgumentOutOfRangeException("Album has no tracks.");
 
